@@ -1,0 +1,79 @@
+:root {
+  // Brand Colors
+  --brand-purple: #8a4fff;
+  --brand-purple-hover: #9c6cff;
+  --brand-cyan: #00d2ff;
+
+  // Background Colors
+  --bg-base: #0f0f13;
+  --bg-panel: #18181f;
+  --bg-panel-light: #202028;
+  --bg-active: #2a2a35;
+  --bg-hover: rgba(255, 255, 255, 0.05);
+
+  // Border Colors
+  --border-color: #2a2a35;
+  --border-highlight: rgba(138, 79, 255, 0.5);
+
+  // Text Colors
+  --text-primary: #d0d0e0;
+  --text-secondary: #808090;
+  --text-muted: #505060;
+  --text-active: #ffffff;
+
+  // Font
+  --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-family);
+  font-size: 13px; // Smaller UI font size, typical for editors
+  overflow: hidden; // Prevent scrolling on the root level
+  -webkit-font-smoothing: antialiased;
+}
+
+// Utility classes for scrollbars
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-base);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--bg-active);
+  border-radius: 4px;
+  
+  &:hover {
+    background: var(--text-muted);
+  }
+}
+
+// Base UI Elements
+button {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
+
+  &:hover {
+    color: var(--text-active);
+  }
+}
+
+input, select {
+  font-family: inherit;
+  font-size: inherit;
+}

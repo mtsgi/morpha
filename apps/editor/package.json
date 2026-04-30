@@ -1,0 +1,24 @@
+{
+  "name": "@morpha/editor",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@morpha/core": "*",
+    "@morpha/web-runtime": "*",
+    "@pinia/nuxt": "^0.11.3",
+    "lucide-vue-next": "^1.0.0",
+    "nuxt": "^3.11.0",
+    "pinia": "^3.0.4",
+    "sass": "^1.99.0",
+    "vue": "^3.4.0",
+    "vue-router": "^4.3.0"
+  }
+}

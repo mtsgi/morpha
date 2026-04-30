@@ -1,0 +1,252 @@
+import { mat3 } from 'gl-matrix';
+import { VS_SOURCE, FS_SOURCE } from './shaders.js';
+
+export class MorphaRenderer {
+  private gl: WebGLRenderingContext;
+  private program: WebGLProgram;
+  
+  private positionBuffer: WebGLBuffer;
+  private texCoordBuffer: WebGLBuffer;
+  
+  private matrixLocation: WebGLUniformLocation;
+  private localMatrixLocation: WebGLUniformLocation;
+  private deformationLocation: WebGLUniformLocation;
+  
+  private textures: Map<string, WebGLTexture> = new Map();
+  private parts: any[] = [];
+  
+  private currentDeformation = { x: 0, y: 0 };
+  
+  constructor(canvas: HTMLCanvasElement) {
+    const gl = canvas.getContext('webgl', { alpha: true, premultipliedAlpha: true });
+    if (!gl) throw new Error('WebGL not supported');
+    this.gl = gl;
+    
+    this.program = this.createProgram(gl, VS_SOURCE, FS_SOURCE);
+    
+    this.positionBuffer = gl.createBuffer()!;
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
+    gl.bufferData(
+      gl.ARRAY_BUFFER, 
+      new Float32Array([
+        -0.5, -0.5,
+         0.5, -0.5,
+        -0.5,  0.5,
+        -0.5,  0.5,
+         0.5, -0.5,
+         0.5,  0.5,
+      ]), 
+      gl.STATIC_DRAW
+    );
+    
+    this.texCoordBuffer = gl.createBuffer()!;
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.texCoordBuffer);
+    gl.bufferData(
+      gl.ARRAY_BUFFER,
+      new Float32Array([
+        0.0, 1.0, 
+        1.0, 1.0, 
+        0.0, 0.0, 
+        0.0, 0.0, 
+        1.0, 1.0, 
+        1.0, 0.0, 
+      ]),
+      gl.STATIC_DRAW
+    );
+    
+    this.matrixLocation = gl.getUniformLocation(this.program, 'u_matrix')!;
+    this.localMatrixLocation = gl.getUniformLocation(this.program, 'u_localMatrix')!;
+    this.deformationLocation = gl.getUniformLocation(this.program, 'u_deformation')!;
+    
+    gl.clearColor(0, 0, 0, 0);
+  }
+  
+  // 後方互換/テスト用
+  public loadTexture(url: string): Promise<void> {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.src = url;
+      img.onload = () => {
+        const gl = this.gl;
+        const tex = gl.createTexture()!;
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        
+        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+        this.textures.set('default', tex);
+        resolve();
+      };
+    });
+  }
+
+  public syncProject(project: any) {
+    if (!project || !project.rig) return;
+    
+    // パーツリストを更新
+    this.parts = project.rig.parts || [];
+    
+    // 新しいアセットがあればロードする
+    for (const asset of project.assets || []) {
+      if (asset.type === 'image' && !this.textures.has(asset.id)) {
+        // ロード中フラグとして null をセット
+        this.textures.set(asset.id, null as any);
+        
+        const img = new Image();
+        img.src = asset.data;
+        img.onload = () => {
+          const gl = this.gl;
+          const tex = gl.createTexture()!;
+          gl.bindTexture(gl.TEXTURE_2D, tex);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+          gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+          this.textures.set(asset.id, tex);
+        };
+      }
+    }
+  }
+
+  public updateParameters(params: Record<string, number>) {
+    // head_x などを変形にマッピング
+    const headX = params['head_x'] || 0;
+    const bodyX = params['body_x'] || 0;
+    
+    this.currentDeformation.x = headX * 0.5 + bodyX * 0.2;
+    // 今回のサンプルとして、X変形とY変形にいくつか割り当てる
+    const browAngle = params['brow_angle'] || 0;
+    this.currentDeformation.y = browAngle * 0.5;
+  }
+  
+  public resize(width: number, height: number) {
+    this.gl.canvas.width = width;
+    this.gl.canvas.height = height;
+  }
+
+  public render() {
+    const gl = this.gl;
+    
+    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    
+    if (this.textures.size === 0) return;
+    
+    gl.useProgram(this.program);
+    
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    
+    const positionLocation = gl.getAttribLocation(this.program, 'a_position');
+    gl.enableVertexAttribArray(positionLocation);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
+    gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+    
+    const texCoordLocation = gl.getAttribLocation(this.program, 'a_texCoord');
+    gl.enableVertexAttribArray(texCoordLocation);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.texCoordBuffer);
+    gl.vertexAttribPointer(texCoordLocation, 2, gl.FLOAT, false, 0, 0);
+    
+    gl.uniform2f(this.deformationLocation, this.currentDeformation.x, this.currentDeformation.y);
+    
+    // Calculate global projection matrix
+    const matrix = mat3.create();
+    const aspect = gl.canvas.width / gl.canvas.height;
+    
+    if (aspect > 1) {
+      mat3.scale(matrix, matrix, [1 / aspect * 1.5, 1.5]);
+    } else {
+      mat3.scale(matrix, matrix, [1.5, aspect * 1.5]);
+    }
+    gl.uniformMatrix3fv(this.matrixLocation, false, matrix as Float32Array);
+    
+    // Hierarchical transform calculation
+    const worldMatrices = new Map<string, mat3>();
+    const computeWorldMatrix = (part: any): mat3 => {
+      if (worldMatrices.has(part.id)) return worldMatrices.get(part.id)!;
+      
+      const localMat = mat3.create();
+      if (part.transform) {
+        mat3.translate(localMat, localMat, part.transform.position);
+        mat3.rotate(localMat, localMat, part.transform.rotation);
+        mat3.scale(localMat, localMat, part.transform.scale);
+      }
+      
+      if (part.parentId) {
+        const parentPart = this.parts.find(p => p.id === part.parentId);
+        if (parentPart) {
+          const parentWorldMat = computeWorldMatrix(parentPart);
+          mat3.multiply(localMat, parentWorldMat, localMat);
+        }
+      }
+      
+      worldMatrices.set(part.id, localMat);
+      return localMat;
+    };
+
+    if (this.parts.length === 0) {
+      const tex = this.textures.get('default');
+      if (tex) {
+        const identity = mat3.create();
+        gl.uniformMatrix3fv(this.localMatrixLocation, false, identity as Float32Array);
+        this.drawQuad(gl, tex);
+      }
+    } else {
+      for (const part of this.parts) {
+        if (!part.visible || part.type !== 'mesh') continue;
+        
+        let tex = null;
+        if (part.assetId) {
+          tex = this.textures.get(part.assetId);
+        } else if (part.name.includes('Eye') || part.name.includes('Face')) {
+          tex = this.textures.get('default');
+        }
+
+        if (tex) {
+          const worldMat = computeWorldMatrix(part);
+          gl.uniformMatrix3fv(this.localMatrixLocation, false, worldMat as Float32Array);
+          this.drawQuad(gl, tex);
+        }
+      }
+    }
+  }
+
+  private drawQuad(gl: WebGLRenderingContext, texture: WebGLTexture) {
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+  }
+  
+  private createProgram(gl: WebGLRenderingContext, vsSource: string, fsSource: string): WebGLProgram {
+    const vertexShader = this.loadShader(gl, gl.VERTEX_SHADER, vsSource)!;
+    const fragmentShader = this.loadShader(gl, gl.FRAGMENT_SHADER, fsSource)!;
+    
+    const program = gl.createProgram()!;
+    gl.attachShader(program, vertexShader);
+    gl.attachShader(program, fragmentShader);
+    gl.linkProgram(program);
+    
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      throw new Error('Program link error: ' + gl.getProgramInfoLog(program));
+    }
+    return program;
+  }
+  
+  private loadShader(gl: WebGLRenderingContext, type: number, source: string): WebGLShader | null {
+    const shader = gl.createShader(type)!;
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+      console.error(gl.getShaderInfoLog(shader));
+      gl.deleteShader(shader);
+      return null;
+    }
+    return shader;
+  }
+}
