@@ -10,12 +10,15 @@ export class MorphaRenderer {
   
   private matrixLocation: WebGLUniformLocation;
   private localMatrixLocation: WebGLUniformLocation;
-  private deformationLocation: WebGLUniformLocation;
+  private parallaxLocation: WebGLUniformLocation;
+  private textureLocation: WebGLUniformLocation;
+  private depthMapLocation: WebGLUniformLocation;
+  private hasDepthMapLocation: WebGLUniformLocation;
   
   private textures: Map<string, WebGLTexture> = new Map();
   private parts: any[] = [];
   
-  private currentDeformation = { x: 0, y: 0 };
+  private currentParallax = { x: 0, y: 0 };
   
   constructor(canvas: HTMLCanvasElement) {
     const gl = canvas.getContext('webgl', { alpha: true, premultipliedAlpha: true });
@@ -56,7 +59,10 @@ export class MorphaRenderer {
     
     this.matrixLocation = gl.getUniformLocation(this.program, 'u_matrix')!;
     this.localMatrixLocation = gl.getUniformLocation(this.program, 'u_localMatrix')!;
-    this.deformationLocation = gl.getUniformLocation(this.program, 'u_deformation')!;
+    this.parallaxLocation = gl.getUniformLocation(this.program, 'u_parallax')!;
+    this.textureLocation = gl.getUniformLocation(this.program, 'u_texture')!;
+    this.depthMapLocation = gl.getUniformLocation(this.program, 'u_depthMap')!;
+    this.hasDepthMapLocation = gl.getUniformLocation(this.program, 'u_hasDepthMap')!;
     
     gl.clearColor(0, 0, 0, 0);
   }
@@ -92,7 +98,7 @@ export class MorphaRenderer {
     
     // 新しいアセットがあればロードする
     for (const asset of project.assets || []) {
-      if (asset.type === 'image' && !this.textures.has(asset.id)) {
+      if ((asset.type === 'image' || asset.type === 'depth_map') && !this.textures.has(asset.id)) {
         // ロード中フラグとして null をセット
         this.textures.set(asset.id, null as any);
         
@@ -115,14 +121,13 @@ export class MorphaRenderer {
   }
 
   public updateParameters(params: Record<string, number>) {
-    // head_x などを変形にマッピング
     const headX = params['head_x'] || 0;
+    const headY = params['head_y'] || 0;
     const bodyX = params['body_x'] || 0;
     
-    this.currentDeformation.x = headX * 0.5 + bodyX * 0.2;
-    // 今回のサンプルとして、X変形とY変形にいくつか割り当てる
-    const browAngle = params['brow_angle'] || 0;
-    this.currentDeformation.y = browAngle * 0.5;
+    // パララックス（視差）用のパラメータとして設定
+    this.currentParallax.x = headX * 0.8 + bodyX * 0.2;
+    this.currentParallax.y = headY * 0.8;
   }
   
   public resize(width: number, height: number) {
@@ -153,7 +158,7 @@ export class MorphaRenderer {
     gl.bindBuffer(gl.ARRAY_BUFFER, this.texCoordBuffer);
     gl.vertexAttribPointer(texCoordLocation, 2, gl.FLOAT, false, 0, 0);
     
-    gl.uniform2f(this.deformationLocation, this.currentDeformation.x, this.currentDeformation.y);
+    gl.uniform2f(this.parallaxLocation, this.currentParallax.x, this.currentParallax.y);
     
     // Calculate global projection matrix
     const matrix = mat3.create();
@@ -195,7 +200,7 @@ export class MorphaRenderer {
       if (tex) {
         const identity = mat3.create();
         gl.uniformMatrix3fv(this.localMatrixLocation, false, identity as Float32Array);
-        this.drawQuad(gl, tex);
+        this.drawQuad(gl, tex, null);
       }
     } else {
       for (const part of this.parts) {
@@ -208,17 +213,36 @@ export class MorphaRenderer {
           tex = this.textures.get('default');
         }
 
+        let depthTex = null;
+        if (part.depthAssetId) {
+          depthTex = this.textures.get(part.depthAssetId) || null;
+        }
+
         if (tex) {
           const worldMat = computeWorldMatrix(part);
           gl.uniformMatrix3fv(this.localMatrixLocation, false, worldMat as Float32Array);
-          this.drawQuad(gl, tex);
+          this.drawQuad(gl, tex, depthTex);
         }
       }
     }
   }
 
-  private drawQuad(gl: WebGLRenderingContext, texture: WebGLTexture) {
+  private drawQuad(gl: WebGLRenderingContext, texture: WebGLTexture, depthTexture: WebGLTexture | null) {
+    // Bind main texture
+    gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.uniform1i(this.textureLocation, 0);
+
+    // Bind depth texture
+    if (depthTexture) {
+      gl.activeTexture(gl.TEXTURE1);
+      gl.bindTexture(gl.TEXTURE_2D, depthTexture);
+      gl.uniform1i(this.depthMapLocation, 1);
+      gl.uniform1i(this.hasDepthMapLocation, 1);
+    } else {
+      gl.uniform1i(this.hasDepthMapLocation, 0);
+    }
+
     gl.drawArrays(gl.TRIANGLES, 0, 6);
   }
   

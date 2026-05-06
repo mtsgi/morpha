@@ -67,6 +67,24 @@
         </div>
       </div>
 
+      <div class="param-group depth-map-section" v-if="activePart && activePart.type === 'mesh'">
+        <div class="group-title">深度マップ (疑似3D)</div>
+        <div v-if="activePart.depthAssetId" class="param-item">
+          <span class="label">状態</span>
+          <span class="depth-status-badge">設定済み</span>
+          <button class="icon-btn" @click="activePart.depthAssetId = undefined" title="深度マップを削除">
+            <TrashIcon :size="14" />
+          </button>
+        </div>
+        <div v-else class="depth-import-row">
+          <button class="add-btn" @click="triggerDepthInput">
+            <PlusIcon :size="14" />
+            画像を読み込む
+          </button>
+        </div>
+        <input type="file" ref="depthInput" accept="image/*" style="display: none;" @change="handleDepthImport" />
+      </div>
+
       <!-- Group: Expression -->
       <div class="param-group">
         <div class="group-title">表情</div>
@@ -222,7 +240,8 @@
 import { computed } from 'vue';
 import { 
   Search as SearchIcon,
-  Plus as PlusIcon
+  Plus as PlusIcon,
+  Trash as TrashIcon
 } from 'lucide-vue-next';
 import { useProjectStore } from '../../stores/project';
 
@@ -232,6 +251,21 @@ const activePart = computed(() => {
   if (!projectStore.project || !projectStore.activePartId) return null;
   return projectStore.project.rig.parts.find(p => p.id === projectStore.activePartId) || null;
 });
+
+const depthInput = ref<HTMLInputElement | null>(null);
+
+const triggerDepthInput = () => {
+  depthInput.value?.click();
+};
+
+const handleDepthImport = async (event: Event) => {
+  const target = event.target as HTMLInputElement;
+  if (target.files && target.files.length > 0 && activePart.value) {
+    const file = target.files[0];
+    await projectStore.importDepthMap(file, activePart.value.id);
+    target.value = '';
+  }
+};
 </script>
 
 <style scoped lang="scss">
@@ -401,6 +435,45 @@ const activePart = computed(() => {
           font-size: 11px;
           color: var(--text-secondary);
           font-variant-numeric: tabular-nums;
+        }
+      }
+    }
+
+    .depth-map-section {
+      .depth-status-badge {
+        flex: 1;
+        font-size: 11px;
+        color: var(--brand-cyan);
+        background-color: rgba(0, 210, 200, 0.1);
+        border: 1px solid rgba(0, 210, 200, 0.25);
+        border-radius: 3px;
+        padding: 2px 6px;
+        text-align: center;
+      }
+
+      .icon-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 3px;
+        transition: color 0.15s, background-color 0.15s;
+
+        &:hover {
+          color: #ff6b6b;
+          background-color: rgba(255, 107, 107, 0.1);
+        }
+      }
+
+      .depth-import-row {
+        padding: 0 0 4px;
+
+        .add-btn {
+          width: 100%;
         }
       }
     }

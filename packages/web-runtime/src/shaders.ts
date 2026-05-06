@@ -4,16 +4,11 @@ export const VS_SOURCE = `
   
   uniform mat3 u_matrix;
   uniform mat3 u_localMatrix; // パーツごとの行列
-  uniform vec2 u_deformation; // テスト用の変形パラメータ
   
   varying vec2 v_texCoord;
   
   void main() {
-    // パラメータによる簡易的な変形テスト (Y座標に応じてXを歪ませる、X座標に応じてYを歪ませる)
     vec2 pos = a_position;
-    pos.x += u_deformation.x * pos.y * 2.0;
-    pos.y += u_deformation.y * pos.x * 2.0;
-
     vec3 worldPos = u_localMatrix * vec3(pos, 1.0);
     gl_Position = vec4((u_matrix * worldPos).xy, 0.0, 1.0);
     v_texCoord = a_texCoord;
@@ -22,13 +17,28 @@ export const VS_SOURCE = `
 
 export const FS_SOURCE = `
   precision mediump float;
-  
   varying vec2 v_texCoord;
-  uniform sampler2D u_image;
+  
+  uniform sampler2D u_texture;
+  uniform sampler2D u_depthMap;
+  uniform bool u_hasDepthMap;
+  uniform vec2 u_parallax; // from parameters (head_x, head_y)
   
   void main() {
-    // プリマルチプライドアルファ用のブレンド処理は後で行うため、ここではそのまま出力
-    vec4 color = texture2D(u_image, v_texCoord);
+    vec2 uv = v_texCoord;
+    
+    if (u_hasDepthMap) {
+      // Sample depth map (grayscale). We use the r channel.
+      float depth = texture2D(u_depthMap, uv).r;
+      // Remap depth from 0.0-1.0 to -0.5 to +0.5.
+      // E.g. White (1.0) is forward (0.5), Black (0.0) is back (-0.5).
+      float offset = depth - 0.5;
+      
+      // Shift UV based on parallax parameter and depth offset.
+      uv -= u_parallax * offset * 0.1; // 0.1 is an intensity multiplier
+    }
+    
+    vec4 color = texture2D(u_texture, uv);
     gl_FragColor = vec4(color.rgb * color.a, color.a);
   }
 `;

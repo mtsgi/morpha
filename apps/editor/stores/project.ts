@@ -151,6 +151,32 @@ export const useProjectStore = defineStore('project', {
         reader.onerror = reject;
         reader.readAsDataURL(file);
       });
+    },
+
+    async importDepthMap(file: File, partId: string) {
+      if (!this.project) return;
+      const part = this.project.rig.parts.find(p => p.id === partId);
+      if (!part) return;
+
+      return new Promise<void>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          if (!this.project) return;
+          const dataUrl = e.target?.result as string;
+          
+          const assetId = 'asset_depth_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+          this.project.assets.push({
+            id: assetId,
+            type: 'depth_map',
+            data: dataUrl
+          });
+
+          part.depthAssetId = assetId;
+          resolve();
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
     }
   }
 });

@@ -31,6 +31,7 @@ export interface Part {
   visible: boolean;
   locked: boolean;
   assetId?: string; // アセットへの参照
+  depthAssetId?: string; // 深度マップアセットへの参照
   transform: {
     position: Vector2;
     scale: Vector2;
