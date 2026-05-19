@@ -5,11 +5,7 @@
         <div class="logo-icon"></div>
         <span>Morpha Studio</span>
       </div>
-      <div class="project-title">
-        <FileIcon class="icon" :size="14" />
-        <span>Untitled Project</span>
-        <ChevronDownIcon class="icon" :size="14" />
-      </div>
+      <FileMenu />
     </div>
 
     <div class="header-center">
@@ -41,7 +37,6 @@
 
 <script setup lang="ts">
 import { 
-  File as FileIcon, 
   ChevronDown as ChevronDownIcon,
   Play as PlayIcon,
   SkipForward as SkipForwardIcon,
@@ -49,6 +44,7 @@ import {
   Maximize as MaximizeIcon,
   Minus as MinusIcon
 } from 'lucide-vue-next';
+import FileMenu from './FileMenu.vue';
 </script>
 
 <style scoped lang="scss">
@@ -82,22 +78,6 @@ import {
         height: 20px;
         background: linear-gradient(135deg, var(--brand-cyan), var(--brand-purple));
         border-radius: 6px;
-      }
-    }
-
-    .project-title {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      color: var(--text-secondary);
-      font-size: 12px;
-      padding: 4px 8px;
-      border-radius: 4px;
-      cursor: pointer;
-
-      &:hover {
-        background-color: var(--bg-hover);
-        color: var(--text-primary);
       }
     }
   }

@@ -2,6 +2,7 @@ export type Vector2 = [number, number];
 
 // .morpha_proj (エディタ作業用ファイル)
 export interface MorphaProject {
+  formatVersion: 1;  // ファイルフォーマットバージョン（マイグレーション用）
   version: string; // e.g., "1.0.0"
   meta: { name: string; resolution: Vector2 };
   assets: Asset[]; // 画像データ(Base64)等

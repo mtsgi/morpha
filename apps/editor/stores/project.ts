@@ -1,10 +1,12 @@
 import { defineStore } from 'pinia';
 import type { MorphaProject, Part } from '@morpha/core';
+import { serializeProject, deserializeProject } from '@morpha/core';
 
 export const useProjectStore = defineStore('project', {
   state: () => ({
     project: null as MorphaProject | null,
     activePartId: null as string | null,
+    isDirty: false,
     currentParameters: {
       'eye_open': 0.75,
       'eye_smile': 0.40,
@@ -38,6 +40,35 @@ export const useProjectStore = defineStore('project', {
     }
   },
   actions: {
+    /**
+     * 新規プロジェクトを作成
+     */
+    newProject(name: string = 'Untitled Project') {
+      this.project = {
+        formatVersion: 1,
+        version: "1.0.0",
+        meta: { name, resolution: [1920, 1080] },
+        assets: [],
+        rig: {
+          bones: [],
+          parts: [
+            {
+              id: 'root',
+              name: 'Root',
+              parentId: null,
+              type: 'folder',
+              visible: true,
+              locked: false,
+              transform: { position: [0, 0], scale: [1, 1], rotation: 0 }
+            }
+          ]
+        },
+        animations: []
+      };
+      this.activePartId = null;
+      this.isDirty = false;
+    },
+
     initMockProject() {
       // UIのモックと同じ構造のダミーデータを生成
       const mockPartsRaw = [
@@ -77,6 +108,7 @@ export const useProjectStore = defineStore('project', {
       })) as Part[];
 
       this.project = {
+        formatVersion: 1,
         version: "1.0.0",
         meta: { name: "Untitled Project", resolution: [1920, 1080] },
         assets: [],
@@ -99,6 +131,46 @@ export const useProjectStore = defineStore('project', {
       };
       
       this.activePartId = 'eye-l'; // 初期選択状態
+      this.isDirty = false;
+    },
+
+    /**
+     * プロジェクトを .morpha_proj ファイルとしてダウンロード保存
+     */
+    saveProject() {
+      if (!this.project) return;
+
+      const json = serializeProject(this.project);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${this.project.meta.name || 'Untitled'}.morpha_proj`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      this.isDirty = false;
+    },
+
+    /**
+     * .morpha_proj ファイルからプロジェクトを読み込む
+     */
+    async loadProject(file: File) {
+      const text = await file.text();
+      const project = deserializeProject(text);
+      this.project = project;
+      this.activePartId = null;
+      this.isDirty = false;
+    },
+
+    /**
+     * プロジェクトに変更があったことをマーク
+     */
+    markDirty() {
+      this.isDirty = true;
     },
     
     setActivePart(partId: string) {
@@ -108,13 +180,19 @@ export const useProjectStore = defineStore('project', {
     toggleVisibility(partId: string) {
       if (!this.project) return;
       const part = this.project.rig.parts.find(p => p.id === partId);
-      if (part) part.visible = !part.visible;
+      if (part) {
+        part.visible = !part.visible;
+        this.isDirty = true;
+      }
     },
 
     toggleLock(partId: string) {
       if (!this.project) return;
       const part = this.project.rig.parts.find(p => p.id === partId);
-      if (part) part.locked = !part.locked;
+      if (part) {
+        part.locked = !part.locked;
+        this.isDirty = true;
+      }
     },
 
     async importImage(file: File) {
@@ -146,6 +224,7 @@ export const useProjectStore = defineStore('project', {
           });
           
           this.activePartId = partId;
+          this.isDirty = true;
           resolve();
         };
         reader.onerror = reject;
@@ -172,6 +251,7 @@ export const useProjectStore = defineStore('project', {
           });
 
           part.depthAssetId = assetId;
+          this.isDirty = true;
           resolve();
         };
         reader.onerror = reject;
