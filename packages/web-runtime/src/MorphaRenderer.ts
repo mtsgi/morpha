@@ -17,6 +17,7 @@ export class MorphaRenderer {
   
   private textures: Map<string, WebGLTexture> = new Map();
   private parts: any[] = [];
+  private bones: any[] = [];
   
   private currentParallax = { x: 0, y: 0 };
   
@@ -95,6 +96,8 @@ export class MorphaRenderer {
     
     // パーツリストを更新
     this.parts = project.rig.parts || [];
+    // ボーンリストを更新
+    this.bones = project.rig.bones || [];
     
     // 新しいアセットがあればロードする
     for (const asset of project.assets || []) {
@@ -171,12 +174,44 @@ export class MorphaRenderer {
     }
     gl.uniformMatrix3fv(this.matrixLocation, false, matrix as Float32Array);
     
+    // Bone world matrix cache
+    const boneWorldMatrices = new Map<string, mat3>();
+    const computeBoneWorldMatrix = (boneId: string): mat3 => {
+      if (boneWorldMatrices.has(boneId)) return boneWorldMatrices.get(boneId)!;
+      
+      const bone = this.bones.find((b: any) => b.id === boneId);
+      if (!bone) {
+        const identity = mat3.create();
+        boneWorldMatrices.set(boneId, identity);
+        return identity;
+      }
+      
+      const boneMat = mat3.create();
+      mat3.translate(boneMat, boneMat, bone.position);
+      mat3.rotate(boneMat, boneMat, bone.rotation);
+      
+      if (bone.parentId) {
+        const parentMat = computeBoneWorldMatrix(bone.parentId);
+        mat3.multiply(boneMat, parentMat, boneMat);
+      }
+      
+      boneWorldMatrices.set(boneId, boneMat);
+      return boneMat;
+    };
+
     // Hierarchical transform calculation
     const worldMatrices = new Map<string, mat3>();
     const computeWorldMatrix = (part: any): mat3 => {
       if (worldMatrices.has(part.id)) return worldMatrices.get(part.id)!;
       
       const localMat = mat3.create();
+      
+      // ボーンバインドがある場合、ボーンの変形行列を適用
+      if (part.boneId) {
+        const boneMat = computeBoneWorldMatrix(part.boneId);
+        mat3.multiply(localMat, localMat, boneMat);
+      }
+      
       if (part.transform) {
         mat3.translate(localMat, localMat, part.transform.position);
         mat3.rotate(localMat, localMat, part.transform.rotation);

@@ -42,9 +42,11 @@ export interface Part {
 
 export interface Bone {
   id: string;
+  name: string;
   parentId: string | null;
   position: Vector2;
   rotation: number;
+  length: number; // ボーンの長さ（子ボーンへの接続方向を示す）
 }
 
 // .morphamotion (モーションデータ)

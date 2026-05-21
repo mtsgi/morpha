@@ -1,42 +1,42 @@
 <template>
   <nav class="primary-nav">
     <div class="nav-top">
-      <div class="nav-item">
+      <div class="nav-item" :class="{ active: activeNav === 'project' }" @click="$emit('update:activeNav', 'project')">
         <FolderIcon class="icon" :size="20" />
         <span>プロジェクト</span>
       </div>
-      <div class="nav-item active">
+      <div class="nav-item" :class="{ active: activeNav === 'parts' }" @click="$emit('update:activeNav', 'parts')">
         <PuzzleIcon class="icon" :size="20" />
         <span>パーツ</span>
       </div>
-      <div class="nav-item">
+      <div class="nav-item" :class="{ active: activeNav === 'deformer' }" @click="$emit('update:activeNav', 'deformer')">
         <Share2Icon class="icon" :size="20" />
         <span>デフォーマ</span>
       </div>
-      <div class="nav-item">
+      <div class="nav-item" :class="{ active: activeNav === 'params' }" @click="$emit('update:activeNav', 'params')">
         <SlidersHorizontalIcon class="icon" :size="20" />
         <span>パラメータ</span>
       </div>
-      <div class="nav-item">
+      <div class="nav-item" :class="{ active: activeNav === 'motion' }" @click="$emit('update:activeNav', 'motion')">
         <ActivityIcon class="icon" :size="20" />
         <span>モーション</span>
       </div>
-      <div class="nav-item">
+      <div class="nav-item" :class="{ active: activeNav === 'expression' }" @click="$emit('update:activeNav', 'expression')">
         <SmileIcon class="icon" :size="20" />
         <span>表情</span>
       </div>
-      <div class="nav-item">
+      <div class="nav-item" :class="{ active: activeNav === 'physics' }" @click="$emit('update:activeNav', 'physics')">
         <WindIcon class="icon" :size="20" />
         <span>物理演算</span>
       </div>
-      <div class="nav-item">
+      <div class="nav-item" :class="{ active: activeNav === 'event' }" @click="$emit('update:activeNav', 'event')">
         <ZapIcon class="icon" :size="20" />
         <span>イベント</span>
       </div>
     </div>
     
     <div class="nav-bottom">
-      <div class="nav-item">
+      <div class="nav-item" @click="$emit('update:activeNav', 'settings')">
         <SettingsIcon class="icon" :size="20" />
         <span>設定</span>
       </div>
@@ -56,6 +56,14 @@ import {
   Zap as ZapIcon,
   Settings as SettingsIcon
 } from 'lucide-vue-next';
+
+defineProps<{
+  activeNav: string;
+}>();
+
+defineEmits<{
+  'update:activeNav': [value: string];
+}>();
 </script>
 
 <style scoped lang="scss">
