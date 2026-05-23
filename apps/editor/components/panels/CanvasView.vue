@@ -37,27 +37,27 @@
     <div class="canvas-workspace">
       <!-- Floating Toolbar Left -->
       <div class="floating-toolbar">
-        <button class="tool-btn">
+        <button class="tool-btn" :class="{ active: activeTool === 'select' }" @click="activeTool = 'select'">
           <MousePointer2Icon class="icon" :size="16" />
           <span>選択</span>
         </button>
-        <button class="tool-btn">
+        <button class="tool-btn" :class="{ active: activeTool === 'move' }" @click="activeTool = 'move'">
           <MoveIcon class="icon" :size="16" />
           <span>移動</span>
         </button>
-        <button class="tool-btn">
+        <button class="tool-btn" :class="{ active: activeTool === 'rotate' }" @click="activeTool = 'rotate'">
           <RotateCwIcon class="icon" :size="16" />
           <span>回転</span>
         </button>
-        <button class="tool-btn">
+        <button class="tool-btn" :class="{ active: activeTool === 'scale' }" @click="activeTool = 'scale'">
           <ScalingIcon class="icon" :size="16" />
           <span>拡縮</span>
         </button>
-        <button class="tool-btn active">
+        <button class="tool-btn" :class="{ active: activeTool === 'mesh' }" @click="activeTool = 'mesh'">
           <NetworkIcon class="icon" :size="16" />
           <span>メッシュ変形</span>
         </button>
-        <button class="tool-btn">
+        <button class="tool-btn" :class="{ active: activeTool === 'weight' }" @click="activeTool = 'weight'">
           <DropletIcon class="icon" :size="16" />
           <span>ウェイト</span>
         </button>
@@ -81,18 +81,23 @@
           @mousemove="onMouseMove"
           @mouseup="onMouseUp"
           @mouseleave="onMouseUp"
+          @wheel.prevent="onWheel"
         ></canvas>
       </div>
 
       <!-- Floating Zoom Controls Bottom -->
       <div class="floating-zoom">
-        <HandIcon class="icon" :size="16" />
+        <button :class="{ active: activeTool === 'pan' }" @click="activeTool = 'pan'">
+          <HandIcon class="icon" :size="16" />
+        </button>
         <div class="divider"></div>
-        <button><MinusIcon :size="14" /></button>
-        <span>72%</span>
-        <button><PlusIcon :size="14" /></button>
+        <button @click="viewport.setZoom(viewport.zoom.value / 1.2)"><MinusIcon :size="14" /></button>
+        <span @dblclick="viewport.reset()">{{ viewport.zoomPercent.value }}</span>
+        <button @click="viewport.setZoom(viewport.zoom.value * 1.2)"><PlusIcon :size="14" /></button>
         <div class="divider"></div>
-        <MaximizeIcon class="icon" :size="16" />
+        <button @click="handleFitView" title="フィットビュー (F)">
+          <MaximizeIcon class="icon" :size="16" />
+        </button>
       </div>
     </div>
   </div>
@@ -126,6 +131,7 @@ import {
 import { useProjectStore } from '../../stores/project';
 import { useBonesStore } from '../../stores/bones';
 import { MorphaRenderer } from '@morpha/web-runtime';
+import { useViewport } from '../../composables/useViewport';
 
 const projectStore = useProjectStore();
 const bonesStore = useBonesStore();
@@ -136,6 +142,9 @@ let renderer: MorphaRenderer | null = null;
 let animationFrameId: number;
 
 const showBones = ref(true);
+const activeTool = ref<string>('select');
+const viewport = useViewport();
+let isSpaceDown = false;
 
 onMounted(async () => {
   if (!canvasRef.value || !containerRef.value) return;
@@ -161,6 +170,24 @@ onMounted(async () => {
   // Load sample texture
   await renderer.loadTexture('/assets/texture_00.png');
 
+  // Keyboard listeners for space (pan mode)
+  const onKeyDown = (e: KeyboardEvent) => {
+    if (e.code === 'Space' && !isSpaceDown) {
+      isSpaceDown = true;
+      e.preventDefault();
+    }
+    if (e.code === 'KeyF') {
+      handleFitView();
+    }
+  };
+  const onKeyUp = (e: KeyboardEvent) => {
+    if (e.code === 'Space') {
+      isSpaceDown = false;
+    }
+  };
+  document.addEventListener('keydown', onKeyDown);
+  document.addEventListener('keyup', onKeyUp);
+
   // Animation loop
   const renderLoop = () => {
     if (renderer) {
@@ -169,7 +196,7 @@ onMounted(async () => {
       
       // Update params from store
       renderer.updateParameters(projectStore.currentParameters);
-      renderer.render();
+      renderer.render(viewport.getViewMatrix());
     }
 
     // Draw bone overlay
@@ -187,7 +214,26 @@ onMounted(async () => {
 
 onUnmounted(() => {
   cancelAnimationFrame(animationFrameId);
+  document.removeEventListener('keydown', onKeyDown);
+  document.removeEventListener('keyup', onKeyUp);
 });
+
+// onKeyDown/onKeyUp are declared inside onMounted so we need refs
+let onKeyDown: (e: KeyboardEvent) => void;
+let onKeyUp: (e: KeyboardEvent) => void;
+
+/** ホイールでズーム */
+const onWheel = (e: WheelEvent) => {
+  if (!containerRef.value) return;
+  const rect = containerRef.value.getBoundingClientRect();
+  viewport.zoomAtPoint(e.deltaY, e.clientX, e.clientY, rect);
+};
+
+/** フィットビュー */
+const handleFitView = () => {
+  if (!containerRef.value) return;
+  viewport.fitToContent(containerRef.value.clientWidth, containerRef.value.clientHeight);
+};
 
 /**
  * ボーンをCanvas 2Dオーバーレイとして描画
@@ -208,9 +254,9 @@ function drawBoneOverlay() {
   
   const w = canvas.width;
   const h = canvas.height;
-  const cx = w / 2;
-  const cy = h / 2;
-  const scale = Math.min(w, h) * 0.75; // WebGL の 1.5 スケールに合わせる
+  const cx = w / 2 + viewport.pan.value[0];
+  const cy = h / 2 + viewport.pan.value[1];
+  const scale = Math.min(w, h) * 0.75 * viewport.zoom.value;
 
   for (const bone of bones) {
     const isActive = bonesStore.activeBoneId === bone.id;
@@ -313,9 +359,9 @@ function hitTestBone(screenX: number, screenY: number): string | null {
 
   const w = canvas.width;
   const h = canvas.height;
-  const cx = w / 2;
-  const cy = h / 2;
-  const scale = Math.min(w, h) * 0.75;
+  const cx = w / 2 + viewport.pan.value[0];
+  const cy = h / 2 + viewport.pan.value[1];
+  const scale = Math.min(w, h) * 0.75 * viewport.zoom.value;
 
   const bones = bonesStore.bones;
   const hitRadius = 10;
@@ -347,6 +393,15 @@ const onMouseDown = (e: MouseEvent) => {
   const mx = e.clientX - rect.left;
   const my = e.clientY - rect.top;
 
+  // Space キーが押されている場合はパンモード
+  if (isSpaceDown || activeTool.value === 'pan' || e.button === 1) {
+    isDragging = true;
+    dragTarget = 'pan';
+    startX = e.clientX;
+    startY = e.clientY;
+    return;
+  }
+
   // まずボーンのヒットテスト
   if (showBones.value) {
     const hitBoneId = hitTestBone(mx, my);
@@ -374,8 +429,13 @@ const onMouseMove = (e: MouseEvent) => {
   startX = e.clientX;
   startY = e.clientY;
 
+  if (dragTarget === 'pan') {
+    viewport.panBy(dx, dy);
+    return;
+  }
+
   const canvas = boneCanvasRef.value;
-  const scale = Math.min(canvas.width, canvas.height) * 0.75;
+  const scale = Math.min(canvas.width, canvas.height) * 0.75 * viewport.zoom.value;
   
   if (dragTarget === 'bone' && bonesStore.activeBoneId) {
     const bone = bonesStore.activeBone;
@@ -388,9 +448,9 @@ const onMouseMove = (e: MouseEvent) => {
       });
     }
   } else if (dragTarget === 'part') {
-    // パーツのドラッグ（既存ロジック）
-    const scaleX = 3.0 / canvas.clientWidth;
-    const scaleY = -3.0 / canvas.clientHeight;
+    // パーツのドラッグ（ビューポートのズームを考慮）
+    const scaleX = 3.0 / (canvas.clientWidth * viewport.zoom.value);
+    const scaleY = -3.0 / (canvas.clientHeight * viewport.zoom.value);
     
     if (projectStore.activePartId && projectStore.project) {
       const part = projectStore.project.rig.parts.find(p => p.id === projectStore.activePartId);

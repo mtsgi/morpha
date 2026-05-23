@@ -65,6 +65,17 @@ export const useBonesStore = defineStore('bones', {
       this.activeBoneId = boneId;
       projectStore.markDirty();
 
+      // ボーンに対応するパラメータを自動生成
+      const paramPrefix = `bone_${boneName.replace(/\s+/g, '_')}`;
+      const autoParams = [
+        { id: `${paramPrefix}_rot`, name: `${boneName} 回転`, group: 'ボーン', min: -3.14, max: 3.14, defaultValue: 0, step: 0.01, linkedBoneId: boneId, linkedProperty: 'rotation' as const },
+        { id: `${paramPrefix}_posX`, name: `${boneName} X`, group: 'ボーン', min: -2, max: 2, defaultValue: 0, step: 0.01, linkedBoneId: boneId, linkedProperty: 'positionX' as const },
+        { id: `${paramPrefix}_posY`, name: `${boneName} Y`, group: 'ボーン', min: -2, max: 2, defaultValue: 0, step: 0.01, linkedBoneId: boneId, linkedProperty: 'positionY' as const },
+      ];
+      for (const p of autoParams) {
+        projectStore.addParameter(p);
+      }
+
       historyStore.record({
         description: `ボーン「${boneName}」を追加`,
         undo: () => {

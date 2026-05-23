@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import type { MorphaProject, Part } from '@morpha/core';
+import type { MorphaProject, Part, ParameterDefinition } from '@morpha/core';
 import { serializeProject, deserializeProject } from '@morpha/core';
 
 export const useProjectStore = defineStore('project', {
@@ -63,7 +63,8 @@ export const useProjectStore = defineStore('project', {
             }
           ]
         },
-        animations: []
+        animations: [],
+        parameters: this._getDefaultParameters(),
       };
       this.activePartId = null;
       this.isDirty = false;
@@ -127,8 +128,12 @@ export const useProjectStore = defineStore('project', {
               { parameterId: "mouth_open", keyframes: [{time: 0, value: 0.65}, {time: 5, value: 0.65}] }
             ]
           }
-        ]
+        ],
+        parameters: this._getDefaultParameters(),
       };
+      
+      // currentParameters を project.parameters のデフォルト値から初期化
+      this._initParametersFromDefs();
       
       this.activePartId = 'eye-l'; // 初期選択状態
       this.isDirty = false;
@@ -257,6 +262,63 @@ export const useProjectStore = defineStore('project', {
         reader.onerror = reject;
         reader.readAsDataURL(file);
       });
+    },
+
+    /**
+     * パラメータを追加
+     */
+    addParameter(param: ParameterDefinition) {
+      if (!this.project) return;
+      // 重複チェック
+      if (this.project.parameters.find(p => p.id === param.id)) return;
+
+      this.project.parameters.push(param);
+      this.currentParameters[param.id] = param.defaultValue;
+      this.isDirty = true;
+    },
+
+    /**
+     * パラメータを削除
+     */
+    removeParameter(paramId: string) {
+      if (!this.project) return;
+      const idx = this.project.parameters.findIndex(p => p.id === paramId);
+      if (idx === -1) return;
+
+      this.project.parameters.splice(idx, 1);
+      delete this.currentParameters[paramId];
+      this.isDirty = true;
+    },
+
+    /**
+     * project.parameters のデフォルト値から currentParameters を初期化
+     */
+    _initParametersFromDefs() {
+      if (!this.project) return;
+      const params: Record<string, number> = {};
+      for (const def of this.project.parameters) {
+        params[def.id] = def.defaultValue;
+      }
+      this.currentParameters = params;
+    },
+
+    /**
+     * デフォルトのパラメータ定義一覧
+     */
+    _getDefaultParameters(): ParameterDefinition[] {
+      return [
+        { id: 'eye_open', name: '目 開閉', group: '表情', min: 0, max: 1, defaultValue: 0.75, step: 0.01 },
+        { id: 'eye_smile', name: '目 笑顔', group: '表情', min: 0, max: 1, defaultValue: 0.40, step: 0.01 },
+        { id: 'brow_y', name: '眉 上下', group: '表情', min: -1, max: 1, defaultValue: 0.10, step: 0.01 },
+        { id: 'brow_angle', name: '眉の角度', group: '表情', min: -1, max: 1, defaultValue: -0.20, step: 0.01 },
+        { id: 'mouth_open', name: '口 開閉', group: '表情', min: 0, max: 1, defaultValue: 0.65, step: 0.01 },
+        { id: 'mouth_form', name: '口 変形', group: '表情', min: -1, max: 1, defaultValue: 0.30, step: 0.01 },
+        { id: 'head_x', name: '頭の向き X', group: '頭部', min: -1, max: 1, defaultValue: -0.10, step: 0.01 },
+        { id: 'head_y', name: '頭の向き Y', group: '頭部', min: -1, max: 1, defaultValue: 0.30, step: 0.01 },
+        { id: 'head_z', name: '頭の傾き Z', group: '頭部', min: -1, max: 1, defaultValue: 0.00, step: 0.01 },
+        { id: 'body_x', name: '体の回転 X', group: '体', min: -1, max: 1, defaultValue: 0.00, step: 0.01 },
+        { id: 'breath', name: '呼吸', group: '体', min: 0, max: 1, defaultValue: 0.35, step: 0.01 },
+      ];
     }
   }
 });

@@ -138,7 +138,7 @@ export class MorphaRenderer {
     this.gl.canvas.height = height;
   }
 
-  public render() {
+  public render(viewMatrix?: Float32Array) {
     const gl = this.gl;
     
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
@@ -172,6 +172,17 @@ export class MorphaRenderer {
     } else {
       mat3.scale(matrix, matrix, [1.5, aspect * 1.5]);
     }
+
+    // Apply viewport transform (zoom/pan)
+    if (viewMatrix) {
+      const viewMat = mat3.fromValues(
+        viewMatrix[0], viewMatrix[1], viewMatrix[2],
+        viewMatrix[3], viewMatrix[4], viewMatrix[5],
+        viewMatrix[6], viewMatrix[7], viewMatrix[8]
+      );
+      mat3.multiply(matrix, viewMat, matrix);
+    }
+
     gl.uniformMatrix3fv(this.matrixLocation, false, matrix as Float32Array);
     
     // Bone world matrix cache

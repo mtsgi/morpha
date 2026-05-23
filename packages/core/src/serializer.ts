@@ -51,12 +51,35 @@ export function migrateProject(data: unknown): MorphaProject {
 
   // v1 は現在の最新バージョン — そのまま返す
   if (obj.formatVersion === CURRENT_FORMAT_VERSION) {
+    // parameters フィールドがない場合はデフォルトを注入（後方互換）
+    if (!Array.isArray((obj as any).parameters)) {
+      (obj as any).parameters = getDefaultParameters();
+    }
     return obj as unknown as MorphaProject;
   }
 
   throw new Error(
     `Unknown format version: ${obj.formatVersion}. このバージョンはサポートされていません。`
   );
+}
+
+/**
+ * デフォルトのパラメータ定義を生成
+ */
+function getDefaultParameters() {
+  return [
+    { id: 'eye_open', name: '目 開閉', group: '表情', min: 0, max: 1, defaultValue: 0.75, step: 0.01 },
+    { id: 'eye_smile', name: '目 笑顔', group: '表情', min: 0, max: 1, defaultValue: 0.40, step: 0.01 },
+    { id: 'brow_y', name: '眉 上下', group: '表情', min: -1, max: 1, defaultValue: 0.10, step: 0.01 },
+    { id: 'brow_angle', name: '眉の角度', group: '表情', min: -1, max: 1, defaultValue: -0.20, step: 0.01 },
+    { id: 'mouth_open', name: '口 開閉', group: '表情', min: 0, max: 1, defaultValue: 0.65, step: 0.01 },
+    { id: 'mouth_form', name: '口 変形', group: '表情', min: -1, max: 1, defaultValue: 0.30, step: 0.01 },
+    { id: 'head_x', name: '頭の向き X', group: '頭部', min: -1, max: 1, defaultValue: -0.10, step: 0.01 },
+    { id: 'head_y', name: '頭の向き Y', group: '頭部', min: -1, max: 1, defaultValue: 0.30, step: 0.01 },
+    { id: 'head_z', name: '頭の傾き Z', group: '頭部', min: -1, max: 1, defaultValue: 0.00, step: 0.01 },
+    { id: 'body_x', name: '体の回転 X', group: '体', min: -1, max: 1, defaultValue: 0.00, step: 0.01 },
+    { id: 'breath', name: '呼吸', group: '体', min: 0, max: 1, defaultValue: 0.35, step: 0.01 },
+  ];
 }
 
 /**

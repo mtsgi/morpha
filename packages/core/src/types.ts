@@ -8,6 +8,19 @@ export interface MorphaProject {
   assets: Asset[]; // 画像データ(Base64)等
   rig: RigData;
   animations: MorphaMotion[];
+  parameters: ParameterDefinition[]; // パラメータ定義
+}
+
+export interface ParameterDefinition {
+  id: string;
+  name: string;
+  group: string;           // グループ名（"表情", "頭部", "体" 等）
+  min: number;
+  max: number;
+  defaultValue: number;
+  step: number;            // スライダーのステップ値
+  linkedBoneId?: string;   // ボーン自動バインド用
+  linkedProperty?: 'rotation' | 'positionX' | 'positionY'; // バインド先プロパティ
 }
 
 export interface Asset {
