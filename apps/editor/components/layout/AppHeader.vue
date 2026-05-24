@@ -10,21 +10,21 @@
 
     <div class="header-center">
       <div class="mode-switcher">
-        <button class="active">Edit</button>
-        <button>Animate</button>
-        <button>Preview</button>
+        <button :class="{ active: currentMode === 'edit' }" @click="setMode('edit')">Edit</button>
+        <button :class="{ active: currentMode === 'animate' }" @click="setMode('animate')">Animate</button>
+        <button :class="{ active: currentMode === 'preview' }" @click="setMode('preview')">Preview</button>
       </div>
     </div>
 
     <div class="header-right">
+      <button class="export-btn" @click="$emit('openExport')">
+        <DownloadIcon :size="14" />
+        <span>エクスポート</span>
+      </button>
       <div class="playback-controls">
         <button><PlayIcon class="icon" :size="16" /></button>
         <button><SkipForwardIcon class="icon" :size="16" /></button>
         <button><FastForwardIcon class="icon" :size="16" /></button>
-      </div>
-      <div class="zoom-controls">
-        <span>100%</span>
-        <ChevronDownIcon class="icon" :size="14" />
       </div>
       <div class="window-controls">
         <button><MaximizeIcon class="icon" :size="14" /></button>
@@ -33,18 +33,34 @@
       </div>
     </div>
   </header>
+
+  <!-- Export Dialog -->
+  <ExportDialog v-if="showExport" @close="showExport = false" />
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue';
 import { 
   ChevronDown as ChevronDownIcon,
   Play as PlayIcon,
   SkipForward as SkipForwardIcon,
   FastForward as FastForwardIcon,
   Maximize as MaximizeIcon,
-  Minus as MinusIcon
+  Minus as MinusIcon,
+  Download as DownloadIcon
 } from 'lucide-vue-next';
 import FileMenu from './FileMenu.vue';
+import ExportDialog from '../panels/ExportDialog.vue';
+
+const emit = defineEmits(['modeChange', 'openExport']);
+
+const currentMode = ref<'edit' | 'animate' | 'preview'>('edit');
+const showExport = ref(false);
+
+function setMode(mode: 'edit' | 'animate' | 'preview') {
+  currentMode.value = mode;
+  emit('modeChange', mode);
+}
 </script>
 
 <style scoped lang="scss">
@@ -133,6 +149,25 @@ import FileMenu from './FileMenu.vue';
       color: var(--text-secondary);
       font-size: 12px;
       cursor: pointer;
+    }
+
+    .export-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      background: linear-gradient(135deg, rgba(138,79,255,0.2), rgba(0,210,255,0.1));
+      border: 1px solid rgba(138,79,255,0.4);
+      color: var(--brand-purple);
+      transition: all 0.15s;
+
+      &:hover {
+        background: linear-gradient(135deg, rgba(138,79,255,0.35), rgba(0,210,255,0.2));
+        border-color: var(--brand-purple);
+      }
     }
 
     .window-controls {

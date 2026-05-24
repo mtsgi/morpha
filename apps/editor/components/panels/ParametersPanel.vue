@@ -198,152 +198,106 @@
       <div class="panel-search">
         <div class="search-box">
           <SearchIcon class="icon" :size="14" />
-          <input type="text" placeholder="パラメータを検索" />
+          <input
+            type="text"
+            placeholder="パラメータを検索"
+            v-model="searchQuery"
+          />
+          <button v-if="searchQuery" class="clear-search" @click="searchQuery = ''">
+            <XIcon :size="12" />
+          </button>
         </div>
       </div>
 
       <div class="parameters-list">
-        <!-- Group: Expression -->
-        <div class="param-group">
-          <div class="group-title">表情</div>
-          
-          <div class="param-item">
-            <span class="label">頭の向き X</span>
-            <div class="slider-container">
-              <input type="range" min="-1" max="1" step="0.01" v-model.number="projectStore.currentParameters['head_x']" class="native-slider" />
-              <div class="slider-track">
-                <div class="slider-fill" :style="{ width: `${(projectStore.currentParameters['head_x'] + 1) * 50}%` }"></div>
-                <div class="slider-thumb" :style="{ left: `${(projectStore.currentParameters['head_x'] + 1) * 50}%` }"></div>
-              </div>
-            </div>
-            <span class="value">{{ projectStore.currentParameters['head_x'].toFixed(2) }}</span>
-          </div>
-
-          <div class="param-item">
-            <span class="label">目 開閉</span>
-            <div class="slider-container">
-              <input type="range" min="0" max="1" step="0.01" v-model.number="projectStore.currentParameters['eye_open']" class="native-slider" />
-              <div class="slider-track">
-                <div class="slider-fill" :style="{ width: `${projectStore.currentParameters['eye_open'] * 100}%` }"></div>
-                <div class="slider-thumb" :style="{ left: `${projectStore.currentParameters['eye_open'] * 100}%` }"></div>
-              </div>
-            </div>
-            <span class="value">{{ projectStore.currentParameters['eye_open'].toFixed(2) }}</span>
-          </div>
-
-          <div class="param-item">
-            <span class="label">眉の角度</span>
-            <div class="slider-container">
-              <input type="range" min="-1" max="1" step="0.01" v-model.number="projectStore.currentParameters['brow_angle']" class="native-slider" />
-              <div class="slider-track">
-                <div class="slider-fill" :style="{ width: `${(projectStore.currentParameters['brow_angle'] + 1) * 50}%` }"></div>
-                <div class="slider-thumb" :style="{ left: `${(projectStore.currentParameters['brow_angle'] + 1) * 50}%` }"></div>
-              </div>
-            </div>
-            <span class="value">{{ projectStore.currentParameters['brow_angle'].toFixed(2) }}</span>
-          </div>
-
-          <div class="param-item">
-            <span class="label">眉 上下</span>
-            <div class="slider-container">
-              <input type="range" min="-1" max="1" step="0.01" v-model.number="projectStore.currentParameters['brow_y']" class="native-slider" />
-              <div class="slider-track">
-                <div class="slider-fill" :style="{ width: `${(projectStore.currentParameters['brow_y'] + 1) * 50}%` }"></div>
-                <div class="slider-thumb" :style="{ left: `${(projectStore.currentParameters['brow_y'] + 1) * 50}%` }"></div>
-              </div>
-            </div>
-            <span class="value">{{ projectStore.currentParameters['brow_y'].toFixed(2) }}</span>
-          </div>
-
-          <div class="param-item">
-            <span class="label">口 開閉</span>
-            <div class="slider-container">
-              <input type="range" min="0" max="1" step="0.01" v-model.number="projectStore.currentParameters['mouth_open']" class="native-slider" />
-              <div class="slider-track">
-                <div class="slider-fill" :style="{ width: `${projectStore.currentParameters['mouth_open'] * 100}%` }"></div>
-                <div class="slider-thumb" :style="{ left: `${projectStore.currentParameters['mouth_open'] * 100}%` }"></div>
-              </div>
-            </div>
-            <span class="value">{{ projectStore.currentParameters['mouth_open'].toFixed(2) }}</span>
-          </div>
-
-          <div class="param-item">
-            <span class="label">口 変形</span>
-            <div class="slider-container">
-              <input type="range" min="-1" max="1" step="0.01" v-model.number="projectStore.currentParameters['mouth_form']" class="native-slider" />
-              <div class="slider-track">
-                <div class="slider-fill" :style="{ width: `${(projectStore.currentParameters['mouth_form'] + 1) * 50}%` }"></div>
-                <div class="slider-thumb" :style="{ left: `${(projectStore.currentParameters['mouth_form'] + 1) * 50}%` }"></div>
-              </div>
-            </div>
-            <span class="value">{{ projectStore.currentParameters['mouth_form'].toFixed(2) }}</span>
-          </div>
+        <!-- パラメータなし -->
+        <div v-if="!projectStore.project?.parameters?.length" class="empty-inspector">
+          <MousePointerIcon :size="24" class="empty-icon" />
+          <span>パラメータがまだありません</span>
         </div>
 
-        <!-- Group: Head -->
-        <div class="param-group">
-          <div class="group-title">頭部</div>
-          
-          <div class="param-item">
-            <span class="label">頭の向き Y</span>
-            <div class="slider-container">
-              <input type="range" min="-1" max="1" step="0.01" v-model.number="projectStore.currentParameters['head_y']" class="native-slider" />
-              <div class="slider-track">
-                <div class="slider-fill" :style="{ width: `${(projectStore.currentParameters['head_y'] + 1) * 50}%` }"></div>
-                <div class="slider-thumb" :style="{ left: `${(projectStore.currentParameters['head_y'] + 1) * 50}%` }"></div>
-              </div>
-            </div>
-            <span class="value">{{ projectStore.currentParameters['head_y'].toFixed(2) }}</span>
-          </div>
-
-          <div class="param-item">
-            <span class="label">頭の傾き Z</span>
-            <div class="slider-container">
-              <input type="range" min="-1" max="1" step="0.01" v-model.number="projectStore.currentParameters['head_z']" class="native-slider" />
-              <div class="slider-track">
-                <div class="slider-fill" :style="{ width: `${(projectStore.currentParameters['head_z'] + 1) * 50}%` }"></div>
-                <div class="slider-thumb" :style="{ left: `${(projectStore.currentParameters['head_z'] + 1) * 50}%` }"></div>
-              </div>
-            </div>
-            <span class="value">{{ projectStore.currentParameters['head_z'].toFixed(2) }}</span>
-          </div>
+        <!-- 検索結果なし -->
+        <div v-else-if="searchQuery && !filteredParams.length" class="empty-inspector">
+          <SearchIcon :size="24" class="empty-icon" />
+          <span>"{{ searchQuery }}" に一致するパラメータなし</span>
         </div>
 
-        <!-- Group: Body -->
-        <div class="param-group">
-          <div class="group-title">体</div>
-          
-          <div class="param-item">
-            <span class="label">体の回転 X</span>
-            <div class="slider-container">
-              <input type="range" min="-1" max="1" step="0.01" v-model.number="projectStore.currentParameters['body_x']" class="native-slider" />
-              <div class="slider-track">
-                <div class="slider-fill" :style="{ width: `${(projectStore.currentParameters['body_x'] + 1) * 50}%` }"></div>
-                <div class="slider-thumb" :style="{ left: `${(projectStore.currentParameters['body_x'] + 1) * 50}%` }"></div>
-              </div>
+        <!-- グループ別スライダー一覧 -->
+        <template v-for="(params, group) in groupedParams" :key="group">
+          <div class="param-group">
+            <div class="group-title">
+              <span>{{ group }}</span>
+              <span class="group-count">{{ params.length }}</span>
             </div>
-            <span class="value">{{ projectStore.currentParameters['body_x'].toFixed(2) }}</span>
-          </div>
-          
-          <div class="param-item">
-            <span class="label">呼吸</span>
-            <div class="slider-container">
-              <input type="range" min="0" max="1" step="0.01" v-model.number="projectStore.currentParameters['breath']" class="native-slider" />
-              <div class="slider-track">
-                <div class="slider-fill" :style="{ width: `${projectStore.currentParameters['breath'] * 100}%` }"></div>
-                <div class="slider-thumb" :style="{ left: `${projectStore.currentParameters['breath'] * 100}%` }"></div>
+
+            <div
+              v-for="param in params"
+              :key="param.id"
+              class="param-item"
+              :class="{ 'linked-bone': !!param.linkedBoneId }"
+            >
+              <span class="label" :title="param.id">{{ param.name }}</span>
+              <div class="slider-container">
+                <input
+                  type="range"
+                  :min="param.min"
+                  :max="param.max"
+                  :step="param.step"
+                  class="native-slider"
+                  :value="projectStore.currentParameters[param.id] ?? param.defaultValue"
+                  @input="handleParamInput(param.id, $event)"
+                />
+                <div class="slider-track">
+                  <div
+                    class="slider-fill"
+                    :class="{ cyan: !!param.linkedBoneId }"
+                    :style="{ width: `${getSliderPercent(param)}%` }"
+                  ></div>
+                  <div
+                    class="slider-thumb"
+                    :class="{ cyan: !!param.linkedBoneId }"
+                    :style="{ left: `${getSliderPercent(param)}%` }"
+                  ></div>
+                </div>
               </div>
+              <span class="value">
+                {{ (projectStore.currentParameters[param.id] ?? param.defaultValue).toFixed(2) }}
+              </span>
+              <!-- キーフレーム追加ボタン -->
+              <button
+                class="kf-btn"
+                title="キーフレームを追加"
+                @click="addKeyframeForParam(param.id)"
+              >
+                <span class="kf-diamond"></span>
+              </button>
             </div>
-            <span class="value">{{ projectStore.currentParameters['breath'].toFixed(2) }}</span>
           </div>
-        </div>
+        </template>
       </div>
 
       <div class="panel-footer">
-        <button class="add-btn">
+        <button class="add-btn" @click="showAddParam = !showAddParam">
           <PlusIcon :size="14" />
           パラメータを追加
         </button>
+      </div>
+
+      <!-- パラメータ追加フォーム -->
+      <div v-if="showAddParam" class="add-param-form">
+        <input v-model="newParamId" type="text" placeholder="ID (e.g. eye_blink_l)" class="param-input" />
+        <input v-model="newParamName" type="text" placeholder="表示名" class="param-input" />
+        <input v-model="newParamGroup" type="text" placeholder="グループ" class="param-input" />
+        <div class="param-row">
+          <span>範囲:</span>
+          <input v-model.number="newParamMin" type="number" step="0.1" class="param-input-small" />
+          <span>~</span>
+          <input v-model.number="newParamMax" type="number" step="0.1" class="param-input-small" />
+        </div>
+        <div class="form-btns">
+          <button class="add-btn" @click="submitAddParam">追加</button>
+          <button class="cancel-btn" @click="showAddParam = false">キャンセル</button>
+        </div>
       </div>
     </template>
   </div>
@@ -362,9 +316,12 @@ import {
 } from 'lucide-vue-next';
 import { useProjectStore } from '../../stores/project';
 import { useBonesStore } from '../../stores/bones';
+import { useTimelineStore } from '../../stores/timeline';
+import type { ParameterDefinition } from '@morpha/core';
 
 const projectStore = useProjectStore();
 const bonesStore = useBonesStore();
+const timelineStore = useTimelineStore();
 
 const activeTab = ref<'inspector' | 'parameters'>('parameters');
 
@@ -381,6 +338,75 @@ const boundParts = computed(() => {
 const getBoneName = (boneId: string): string => {
   const bone = bonesStore.bones.find(b => b.id === boneId);
   return bone?.name ?? boneId;
+};
+
+// --- Parameter tab ---
+const searchQuery = ref('');
+const showAddParam = ref(false);
+const newParamId = ref('');
+const newParamName = ref('');
+const newParamGroup = ref('カスタム');
+const newParamMin = ref(-1);
+const newParamMax = ref(1);
+
+/** 検索フィルター済みパラメータ一覧 */
+const filteredParams = computed(() => {
+  const defs = projectStore.project?.parameters ?? [];
+  if (!searchQuery.value) return defs;
+  const q = searchQuery.value.toLowerCase();
+  return defs.filter(p => p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q) || p.group.toLowerCase().includes(q));
+});
+
+/** グループ別にまとめたパラメータ (Record<groupName, def[]>) */
+const groupedParams = computed(() => {
+  const result: Record<string, ParameterDefinition[]> = {};
+  for (const p of filteredParams.value) {
+    if (!result[p.group]) result[p.group] = [];
+    result[p.group].push(p);
+  }
+  return result;
+});
+
+/** スライダーのパーセント位置を計算 */
+const getSliderPercent = (param: ParameterDefinition) => {
+  const val = projectStore.currentParameters[param.id] ?? param.defaultValue;
+  return ((val - param.min) / (param.max - param.min)) * 100;
+};
+
+/** スライダー入力ハンドラー */
+const handleParamInput = (id: string, e: Event) => {
+  const val = parseFloat((e.target as HTMLInputElement).value);
+  projectStore.currentParameters[id] = val;
+};
+
+/** キーフレームをアクティブトラックに追加 */
+const addKeyframeForParam = (paramId: string) => {
+  // トラックがなければ自動作成
+  const existingIdx = timelineStore.tracks.findIndex(t => t.parameterId === paramId);
+  let trackIdx = existingIdx;
+  if (trackIdx === -1) {
+    timelineStore.addTrack(paramId);
+    trackIdx = timelineStore.tracks.length - 1;
+  }
+  const value = projectStore.currentParameters[paramId] ?? 0;
+  timelineStore.addKeyframe(trackIdx, timelineStore.currentTime, value);
+};
+
+/** パラメータ追加 */
+const submitAddParam = () => {
+  if (!newParamId.value || !newParamName.value) return;
+  projectStore.addParameter({
+    id: newParamId.value,
+    name: newParamName.value,
+    group: newParamGroup.value,
+    min: newParamMin.value,
+    max: newParamMax.value,
+    defaultValue: 0,
+    step: 0.01,
+  });
+  newParamId.value = '';
+  newParamName.value = '';
+  showAddParam.value = false;
 };
 
 // Bone inspector handlers
@@ -768,6 +794,7 @@ const handleDepthImport = async (event: Event) => {
   .panel-footer {
     padding: 12px;
     border-top: 1px solid var(--border-color);
+    flex-shrink: 0;
 
     .add-btn {
       width: 100%;
@@ -784,6 +811,134 @@ const handleDepthImport = async (event: Event) => {
       &:hover {
         border-color: var(--brand-purple);
         color: var(--brand-purple);
+      }
+    }
+  }
+
+  // キーフレームボタン
+  .kf-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    border-radius: 2px;
+    opacity: 0;
+    transition: opacity 0.15s;
+    cursor: pointer;
+
+    .kf-diamond {
+      display: block;
+      width: 7px;
+      height: 7px;
+      background-color: var(--brand-cyan);
+      transform: rotate(45deg);
+    }
+
+    &:hover .kf-diamond {
+      background-color: #fff;
+      box-shadow: 0 0 6px var(--brand-cyan);
+    }
+  }
+
+  .param-item:hover .kf-btn { opacity: 1; }
+  .param-item.linked-bone .label { color: var(--brand-cyan); }
+
+  // グループカウントバッジ
+  .group-count {
+    margin-left: auto;
+    font-size: 10px;
+    color: var(--text-muted);
+    background-color: var(--bg-active);
+    border-radius: 10px;
+    padding: 0 5px;
+    font-weight: 400;
+  }
+
+  // 検索クリアボタン
+  .clear-search {
+    display: flex;
+    align-items: center;
+    color: var(--text-muted);
+    padding: 2px;
+    border-radius: 2px;
+
+    &:hover { color: var(--text-primary); }
+  }
+
+  // パラメータ追加フォーム
+  .add-param-form {
+    padding: 12px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background-color: var(--bg-base);
+
+    .param-input {
+      width: 100%;
+      background-color: var(--bg-panel);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      padding: 5px 8px;
+      color: var(--text-primary);
+      font-size: 11px;
+      outline: none;
+
+      &:focus { border-color: var(--brand-cyan); }
+    }
+
+    .param-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--text-secondary);
+
+      .param-input-small {
+        width: 60px;
+        background-color: var(--bg-panel);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        padding: 4px 6px;
+        color: var(--text-primary);
+        font-size: 11px;
+        outline: none;
+
+        &:focus { border-color: var(--brand-cyan); }
+      }
+    }
+
+    .form-btns {
+      display: flex;
+      gap: 8px;
+      margin-top: 4px;
+
+      .add-btn {
+        flex: 1;
+        padding: 5px;
+        background-color: rgba(138, 79, 255, 0.2);
+        border: 1px solid var(--brand-purple);
+        border-radius: 4px;
+        color: var(--brand-purple);
+        font-size: 11px;
+        font-weight: 500;
+        cursor: pointer;
+
+        &:hover { background-color: rgba(138, 79, 255, 0.35); }
+      }
+
+      .cancel-btn {
+        flex: 1;
+        padding: 5px;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        color: var(--text-secondary);
+        font-size: 11px;
+        cursor: pointer;
+
+        &:hover { border-color: var(--text-muted); color: var(--text-primary); }
       }
     }
   }
