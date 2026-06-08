@@ -50,6 +50,14 @@ export interface MorphaFormatPart {
     scale: [number, number];
     rotation: number;
   };
+  vertices?: number[];
+  uvs?: number[];
+  triangles?: number[];
+  skinWeights?: {
+    boneIds: string[];
+    weights: number[];
+  }[];
+  bindMatrices?: Record<string, number[]>;
 }
 
 export interface MorphaFormatBone {
@@ -59,6 +67,14 @@ export interface MorphaFormatBone {
   position: [number, number];
   rotation: number;
   length: number;
+  physics?: {
+    enabled: boolean;
+    mass: number;
+    damping: number;
+    stiffness: number;
+    gravity: number;
+    wind: number;
+  };
 }
 
 /**
@@ -82,6 +98,11 @@ export function convertToMorphaFormat(project: MorphaProject): MorphaFormat {
     assetId: p.assetId,
     depthAssetId: p.depthAssetId,
     transform: p.transform,
+    vertices: p.vertices,
+    uvs: p.uvs,
+    triangles: p.triangles,
+    skinWeights: p.skinWeights,
+    bindMatrices: p.bindMatrices,
   }));
 
   const bones: MorphaFormatBone[] = project.rig.bones.map(b => ({
@@ -91,6 +112,7 @@ export function convertToMorphaFormat(project: MorphaProject): MorphaFormat {
     position: b.position,
     rotation: b.rotation,
     length: b.length,
+    physics: b.physics,
   }));
 
   return {

@@ -51,6 +51,15 @@ export interface Part {
     scale: Vector2;
     rotation: number; // radians
   };
+  // メッシュ変形 / スキンウェイト用データ
+  vertices?: number[]; // [x0, y0, x1, y1, ...]
+  uvs?: number[];      // [u0, v0, u1, v1, ...]
+  triangles?: number[]; // [i0, j0, k0, ...] (頂点インデックスの配列)
+  skinWeights?: {
+    boneIds: string[];  // 影響を与えるボーンIDのリスト
+    weights: number[];  // 各ボーンの影響度 (合計 1.0)
+  }[];
+  bindMatrices?: Record<string, number[]>; // 各ボーンのバインド時逆行列 (flat mat3: 9要素)
 }
 
 export interface Bone {
@@ -60,6 +69,14 @@ export interface Bone {
   position: Vector2;
   rotation: number;
   length: number; // ボーンの長さ（子ボーンへの接続方向を示す）
+  physics?: {
+    enabled: boolean;
+    mass: number;        // 質量
+    damping: number;     // 減衰 (0.0 〜 1.0)
+    stiffness: number;   // 剛性 (0.0 〜 1.0)
+    gravity: number;     // 重力影響度
+    wind: number;        // 風影響度
+  };
 }
 
 // .morphamotion (モーションデータ)

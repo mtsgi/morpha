@@ -319,6 +319,129 @@ export const useProjectStore = defineStore('project', {
         { id: 'body_x', name: '体の回転 X', group: '体', min: -1, max: 1, defaultValue: 0.00, step: 0.01 },
         { id: 'breath', name: '呼吸', group: '体', min: 0, max: 1, defaultValue: 0.35, step: 0.01 },
       ];
-    }
+    },
+
+    /**
+     * linkedBoneId を持つパラメータの値をボーンの position/rotation に書き戻す
+     * タイムライン再生時・スライダー操作時に呼び出す
+     */
+    syncLinkedParameters() {
+      if (!this.project) return;
+      for (const param of this.project.parameters) {
+        if (!param.linkedBoneId || !param.linkedProperty) continue;
+        const value = this.currentParameters[param.id];
+        if (value === undefined) continue;
+        const bone = this.project.rig.bones.find(b => b.id === param.linkedBoneId);
+        if (!bone) continue;
+        if (param.linkedProperty === 'rotation') {
+          bone.rotation = value;
+        } else if (param.linkedProperty === 'positionX') {
+          bone.position[0] = value;
+        } else if (param.linkedProperty === 'positionY') {
+          bone.position[1] = value;
+        }
+      }
+    },
+
+    /**
+     * パーツの描画順を変更 (同じ parentId を持つパーツ間での移動)
+     */
+    reorderPart(partId: string, targetId: string, position: 'before' | 'after') {
+      if (!this.project) return;
+      const parts = this.project.rig.parts;
+      const fromIndex = parts.findIndex(p => p.id === partId);
+      if (fromIndex === -1) return;
+      const toIndex = parts.findIndex(p => p.id === targetId);
+      if (toIndex === -1) return;
+
+      const [moved] = parts.splice(fromIndex, 1);
+      const insertAt = position === 'before' ? toIndex : toIndex + 1;
+      const adjustedIndex = fromIndex < toIndex ? insertAt - 1 : insertAt;
+      parts.splice(adjustedIndex, 0, moved);
+      this.isDirty = true;
+    },
+
+    /**
+     * パーツを複製
+     */
+    duplicatePart(partId: string): Part | null {
+      if (!this.project) return null;
+      const src = this.project.rig.parts.find(p => p.id === partId);
+      if (!src) return null;
+
+      const newId = 'part_copy_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+      const clone: Part = {
+        ...src,
+        id: newId,
+        name: src.name + ' コピー',
+        boneId: undefined, // バインドはコピーしない
+        transform: {
+          position: [...src.transform.position] as [number, number],
+          scale: [...src.transform.scale] as [number, number],
+          rotation: src.transform.rotation,
+        },
+      };
+
+      const srcIndex = this.project.rig.parts.findIndex(p => p.id === partId);
+      this.project.rig.parts.splice(srcIndex + 1, 0, clone);
+      this.activePartId = newId;
+      this.isDirty = true;
+      return clone;
+    },
+
+    /**
+     * 指定されたパーツを新しいグループ（フォルダ）にまとめる
+     */
+    groupParts(partIds: string[], groupName: string = '新規グループ'): Part | null {
+      if (!this.project || partIds.length === 0) return null;
+
+      // 最初のパーツと同じ親にグループフォルダを作成
+      const firstPart = this.project.rig.parts.find(p => p.id === partIds[0]);
+      if (!firstPart) return null;
+
+      const parentId = firstPart.parentId;
+      const groupId = 'part_group_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+
+      const groupFolder: Part = {
+        id: groupId,
+        name: groupName,
+        parentId,
+        type: 'folder',
+        visible: true,
+        locked: false,
+        transform: { position: [0, 0], scale: [1, 1], rotation: 0 }
+      };
+
+      // 最初のパーツの直前に挿入
+      const firstIndex = this.project.rig.parts.findIndex(p => p.id === partIds[0]);
+      this.project.rig.parts.splice(firstIndex, 0, groupFolder);
+
+      // 指定されたパーツの親をグループフォルダに変更
+      for (const id of partIds) {
+        const part = this.project.rig.parts.find(p => p.id === id);
+        if (part && part.id !== groupId) {
+          part.parentId = groupId;
+        }
+      }
+
+      this.activePartId = groupId;
+      this.isDirty = true;
+      return groupFolder;
+    },
+
+    /**
+     * パーツを削除
+     */
+    removePart(partId: string) {
+      if (!this.project) return;
+      const idx = this.project.rig.parts.findIndex(p => p.id === partId);
+      if (idx === -1) return;
+
+      this.project.rig.parts.splice(idx, 1);
+      if (this.activePartId === partId) {
+        this.activePartId = null;
+      }
+      this.isDirty = true;
+    },
   }
 });

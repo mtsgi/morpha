@@ -344,5 +344,125 @@ export const useTimelineStore = defineStore('timeline', {
         this.addKeyframe(trackIndex, this.currentTime, value);
       }
     },
+
+    /**
+     * 新しいモーションを追加
+     */
+    addMotion(name: string = 'New Motion', duration: number = 5.0, fps: number = 60) {
+      const projectStore = useProjectStore();
+      const historyStore = useHistoryStore();
+      if (!projectStore.project) return;
+
+      const motion: MorphaMotion = { name, duration, fps, tracks: [] };
+      projectStore.project.animations.push(motion);
+      this.activeMotionIndex = projectStore.project.animations.length - 1;
+      projectStore.markDirty();
+
+      historyStore.record({
+        description: `モーション「${name}」を追加`,
+        undo: () => {
+          if (!projectStore.project) return;
+          const idx = projectStore.project.animations.findIndex(m => m.name === name);
+          if (idx !== -1) projectStore.project.animations.splice(idx, 1);
+          this.activeMotionIndex = Math.max(0, this.activeMotionIndex - 1);
+        },
+        redo: () => {
+          if (!projectStore.project) return;
+          projectStore.project.animations.push({ ...motion, tracks: [] });
+          this.activeMotionIndex = projectStore.project.animations.length - 1;
+        },
+      });
+    },
+
+    /**
+     * モーションを削除
+     */
+    removeMotion(index: number) {
+      const projectStore = useProjectStore();
+      const historyStore = useHistoryStore();
+      if (!projectStore.project) return;
+
+      const removed = projectStore.project.animations[index];
+      if (!removed) return;
+
+      const removedCopy = JSON.parse(JSON.stringify(removed)) as MorphaMotion;
+      projectStore.project.animations.splice(index, 1);
+      this.activeMotionIndex = Math.max(0, index - 1);
+      projectStore.markDirty();
+
+      historyStore.record({
+        description: `モーション「${removedCopy.name}」を削除`,
+        undo: () => {
+          if (!projectStore.project) return;
+          projectStore.project.animations.splice(index, 0, removedCopy);
+          this.activeMotionIndex = index;
+        },
+        redo: () => {
+          if (!projectStore.project) return;
+          projectStore.project.animations.splice(index, 1);
+          this.activeMotionIndex = Math.max(0, index - 1);
+        },
+      });
+    },
+
+    /**
+     * モーションをリネーム
+     */
+    renameMotion(index: number, newName: string) {
+      const projectStore = useProjectStore();
+      const historyStore = useHistoryStore();
+      if (!projectStore.project) return;
+
+      const motion = projectStore.project.animations[index];
+      if (!motion) return;
+
+      const oldName = motion.name;
+      motion.name = newName;
+      projectStore.markDirty();
+
+      historyStore.record({
+        description: `モーション「${oldName}」を「${newName}」にリネーム`,
+        undo: () => {
+          const m = projectStore.project?.animations[index];
+          if (m) m.name = oldName;
+        },
+        redo: () => {
+          const m = projectStore.project?.animations[index];
+          if (m) m.name = newName;
+        },
+      });
+    },
+
+    /**
+     * モーションを複製
+     */
+    duplicateMotion(index: number) {
+      const projectStore = useProjectStore();
+      const historyStore = useHistoryStore();
+      if (!projectStore.project) return;
+
+      const src = projectStore.project.animations[index];
+      if (!src) return;
+
+      const clone: MorphaMotion = JSON.parse(JSON.stringify(src));
+      clone.name = src.name + ' コピー';
+      projectStore.project.animations.splice(index + 1, 0, clone);
+      this.activeMotionIndex = index + 1;
+      projectStore.markDirty();
+
+      historyStore.record({
+        description: `モーション「${src.name}」を複製`,
+        undo: () => {
+          if (!projectStore.project) return;
+          projectStore.project.animations.splice(index + 1, 1);
+          this.activeMotionIndex = index;
+        },
+        redo: () => {
+          if (!projectStore.project) return;
+          projectStore.project.animations.splice(index + 1, 0, JSON.parse(JSON.stringify(clone)));
+          this.activeMotionIndex = index + 1;
+        },
+      });
+    },
   },
 });

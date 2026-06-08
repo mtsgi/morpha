@@ -21,11 +21,11 @@
     </div>
 
     <div class="panel-footer">
-      <FolderPlusIcon class="icon" :size="16" />
+      <FolderPlusIcon class="icon" :size="16" @click="handleCreateGroup" title="新しいグループフォルダを追加" />
       <FilePlusIcon class="icon" :size="16" @click="triggerFileInput" title="画像をインポート" />
       <input type="file" ref="fileInput" accept="image/*" style="display: none;" @change="handleFileImport" />
-      <CopyIcon class="icon" :size="16" />
-      <TrashIcon class="icon" :size="16" />
+      <CopyIcon class="icon" :size="16" @click="handleDuplicateActive" title="選択中のパーツを複製" :style="{ opacity: projectStore.activePartId ? 1 : 0.4, cursor: projectStore.activePartId ? 'pointer' : 'not-allowed' }" />
+      <TrashIcon class="icon" :size="16" @click="handleRemoveActive" title="選択中のパーツを削除" :style="{ opacity: projectStore.activePartId && projectStore.activePartId !== 'root' ? 1 : 0.4, cursor: projectStore.activePartId && projectStore.activePartId !== 'root' ? 'pointer' : 'not-allowed' }" />
     </div>
   </div>
 </template>
@@ -56,6 +56,33 @@ const handleFileImport = async (event: Event) => {
     await projectStore.importImage(file);
     // 選択をリセット
     target.value = '';
+  }
+};
+
+const handleCreateGroup = () => {
+  const name = prompt('グループ名を入力してください', '新規グループ');
+  if (name) {
+    const activeId = projectStore.activePartId;
+    projectStore.groupParts(activeId ? [activeId] : [], name);
+  }
+};
+
+const handleDuplicateActive = () => {
+  if (projectStore.activePartId) {
+    projectStore.duplicatePart(projectStore.activePartId);
+  }
+};
+
+const handleRemoveActive = () => {
+  if (projectStore.activePartId) {
+    if (projectStore.activePartId === 'root') {
+      alert('ルートフォルダは削除できません。');
+      return;
+    }
+    const part = projectStore.project?.rig.parts.find(p => p.id === projectStore.activePartId);
+    if (part && confirm(`本当にパーツ「${part.name}」を削除しますか？`)) {
+      projectStore.removePart(projectStore.activePartId);
+    }
   }
 };
 </script>

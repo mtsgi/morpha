@@ -1,14 +1,18 @@
 <template>
-  <div class="parameters-panel">
+  <div class="parameters-panel" :class="{ mini }">
     <div class="panel-header">
-      <div class="tabs">
+      <!-- mini モードではタブなしでパラメータタイトルのみ表示 -->
+      <template v-if="mini">
+        <div class="mini-header">パラメータ</div>
+      </template>
+      <div v-else class="tabs">
         <div class="tab" :class="{ active: activeTab === 'inspector' }" @click="activeTab = 'inspector'">インスペクタ</div>
         <div class="tab" :class="{ active: activeTab === 'parameters' }" @click="activeTab = 'parameters'">パラメータ</div>
       </div>
     </div>
 
-    <!-- Inspector Tab -->
-    <template v-if="activeTab === 'inspector'">
+    <!-- Inspector Tab (mini モードでは非表示) -->
+    <template v-if="activeTab === 'inspector' && !mini">
       <!-- Bone Inspector -->
       <div v-if="bonesStore.activeBone" class="parameters-list">
         <div class="param-group">
@@ -90,6 +94,87 @@
             </button>
           </div>
         </div>
+
+        <!-- Bone Physics Section -->
+        <div class="param-group">
+          <div class="group-title">
+            <ActivityIcon :size="12" class="group-icon cyan" />
+            物理演算 (揺れもの)
+          </div>
+          <div class="param-item">
+            <span class="label">有効化</span>
+            <label class="toggle-switch">
+              <input 
+                type="checkbox" 
+                :checked="bonesStore.activeBone.physics?.enabled || false" 
+                @change="handlePhysicsToggle" 
+              />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          
+          <template v-if="bonesStore.activeBone.physics?.enabled">
+            <div class="param-item">
+              <span class="label">質量 (Mass)</span>
+              <div class="slider-container">
+                <input type="range" min="0.1" max="5" step="0.05" :value="bonesStore.activeBone.physics?.mass ?? 1.0" class="native-slider" @input="handlePhysicsParamChange('mass', $event)" />
+                <div class="slider-track">
+                  <div class="slider-fill cyan" :style="{ width: `${((bonesStore.activeBone.physics?.mass ?? 1.0) / 5) * 100}%` }"></div>
+                  <div class="slider-thumb cyan" :style="{ left: `${((bonesStore.activeBone.physics?.mass ?? 1.0) / 5) * 100}%` }"></div>
+                </div>
+              </div>
+              <span class="value">{{ (bonesStore.activeBone.physics?.mass ?? 1.0).toFixed(2) }}</span>
+            </div>
+
+            <div class="param-item">
+              <span class="label">減衰 (Damp)</span>
+              <div class="slider-container">
+                <input type="range" min="0" max="1" step="0.01" :value="bonesStore.activeBone.physics?.damping ?? 0.1" class="native-slider" @input="handlePhysicsParamChange('damping', $event)" />
+                <div class="slider-track">
+                  <div class="slider-fill cyan" :style="{ width: `${(bonesStore.activeBone.physics?.damping ?? 0.1) * 100}%` }"></div>
+                  <div class="slider-thumb cyan" :style="{ left: `${(bonesStore.activeBone.physics?.damping ?? 0.1) * 100}%` }"></div>
+                </div>
+              </div>
+              <span class="value">{{ (bonesStore.activeBone.physics?.damping ?? 0.1).toFixed(2) }}</span>
+            </div>
+
+            <div class="param-item">
+              <span class="label">剛性 (Stiffness)</span>
+              <div class="slider-container">
+                <input type="range" min="0.01" max="1" step="0.01" :value="bonesStore.activeBone.physics?.stiffness ?? 0.1" class="native-slider" @input="handlePhysicsParamChange('stiffness', $event)" />
+                <div class="slider-track">
+                  <div class="slider-fill cyan" :style="{ width: `${(bonesStore.activeBone.physics?.stiffness ?? 0.1) * 100}%` }"></div>
+                  <div class="slider-thumb cyan" :style="{ left: `${(bonesStore.activeBone.physics?.stiffness ?? 0.1) * 100}%` }"></div>
+                </div>
+              </div>
+              <span class="value">{{ (bonesStore.activeBone.physics?.stiffness ?? 0.1).toFixed(2) }}</span>
+            </div>
+
+            <div class="param-item">
+              <span class="label">重力 (Gravity)</span>
+              <div class="slider-container">
+                <input type="range" min="-3" max="3" step="0.1" :value="bonesStore.activeBone.physics?.gravity ?? 0.0" class="native-slider" @input="handlePhysicsParamChange('gravity', $event)" />
+                <div class="slider-track">
+                  <div class="slider-fill cyan" :style="{ width: `${((bonesStore.activeBone.physics?.gravity ?? 0.0) + 3) / 6 * 100}%` }"></div>
+                  <div class="slider-thumb cyan" :style="{ left: `${((bonesStore.activeBone.physics?.gravity ?? 0.0) + 3) / 6 * 100}%` }"></div>
+                </div>
+              </div>
+              <span class="value">{{ (bonesStore.activeBone.physics?.gravity ?? 0.0).toFixed(1) }}</span>
+            </div>
+
+            <div class="param-item">
+              <span class="label">風 (Wind)</span>
+              <div class="slider-container">
+                <input type="range" min="0" max="3" step="0.1" :value="bonesStore.activeBone.physics?.wind ?? 0.0" class="native-slider" @input="handlePhysicsParamChange('wind', $event)" />
+                <div class="slider-track">
+                  <div class="slider-fill cyan" :style="{ width: `${(bonesStore.activeBone.physics?.wind ?? 0.0) / 3 * 100}%` }"></div>
+                  <div class="slider-thumb cyan" :style="{ left: `${(bonesStore.activeBone.physics?.wind ?? 0.0) / 3 * 100}%` }"></div>
+                </div>
+              </div>
+              <span class="value">{{ (bonesStore.activeBone.physics?.wind ?? 0.0).toFixed(1) }}</span>
+            </div>
+          </template>
+        </div>
       </div>
 
       <!-- Part Inspector -->
@@ -164,6 +249,36 @@
           </div>
         </div>
 
+        <!-- Mesh and Weights Section -->
+        <div class="param-group" v-if="activePart.type === 'mesh'">
+          <div class="group-title">メッシュとウェイト</div>
+          <div v-if="activePart.vertices && activePart.vertices.length > 0" class="mesh-summary">
+            <div class="prop-text-row">
+              <span class="label">頂点数</span>
+              <span class="val">{{ activePart.vertices.length / 2 }}</span>
+            </div>
+            <div class="prop-text-row">
+              <span class="label">三角形数</span>
+              <span class="val">{{ activePart.triangles ? activePart.triangles.length / 3 : 0 }}</span>
+            </div>
+            <div class="prop-text-row">
+              <span class="label">バインドボーン数</span>
+              <span class="val">{{ activePart.bindMatrices ? Object.keys(activePart.bindMatrices).length : 0 }}</span>
+            </div>
+            <div class="btn-grid-row">
+              <button class="opt-btn danger" @click="handleClearMesh">メッシュをクリア</button>
+              <button class="opt-btn" @click="handleFreezeBindPose">バインドポーズ固定</button>
+            </div>
+          </div>
+          <div v-else class="empty-mesh-desc">
+            <span class="desc-text">メッシュ未生成 (現在通常クアッド描画)</span>
+            <div class="btn-grid-row">
+              <button class="opt-btn" @click="handleInitGridMesh(3, 3)">3x3グリッド生成</button>
+              <button class="opt-btn" @click="handleInitGridMesh(4, 4)">4x4グリッド生成</button>
+            </div>
+          </div>
+        </div>
+
         <!-- Depth Map Section -->
         <div class="param-group depth-map-section" v-if="activePart.type === 'mesh'">
           <div class="group-title">深度マップ (疑似3D)</div>
@@ -193,8 +308,8 @@
       </div>
     </template>
 
-    <!-- Parameters Tab -->
-    <template v-else>
+    <!-- Parameters Tab (mini モードでは常に表示) -->
+    <template v-if="activeTab === 'parameters' || mini">
       <div class="panel-search">
         <div class="search-box">
           <SearchIcon class="icon" :size="14" />
@@ -276,15 +391,16 @@
         </template>
       </div>
 
-      <div class="panel-footer">
+      <!-- フッター: mini モードでは非表示 -->
+      <div v-if="!mini" class="panel-footer">
         <button class="add-btn" @click="showAddParam = !showAddParam">
           <PlusIcon :size="14" />
           パラメータを追加
         </button>
       </div>
 
-      <!-- パラメータ追加フォーム -->
-      <div v-if="showAddParam" class="add-param-form">
+      <!-- パラメータ追加フォーム: mini モードでは非表示 -->
+      <div v-if="showAddParam && !mini" class="add-param-form">
         <input v-model="newParamId" type="text" placeholder="ID (e.g. eye_blink_l)" class="param-input" />
         <input v-model="newParamName" type="text" placeholder="表示名" class="param-input" />
         <input v-model="newParamGroup" type="text" placeholder="グループ" class="param-input" />
@@ -304,6 +420,11 @@
 </template>
 
 <script setup lang="ts">
+const props = defineProps<{
+  mini?: boolean;
+}>();
+const { mini } = props;
+
 import { ref, computed } from 'vue';
 import { 
   Search as SearchIcon,
@@ -312,8 +433,10 @@ import {
   Bone as BoneIcon,
   Puzzle as PuzzleIcon,
   X as XIcon,
-  MousePointer as MousePointerIcon
+  MousePointer as MousePointerIcon,
+  Activity as ActivityIcon
 } from 'lucide-vue-next';
+import { usePhysicsStore } from '../../stores/physics';
 import { useProjectStore } from '../../stores/project';
 import { useBonesStore } from '../../stores/bones';
 import { useTimelineStore } from '../../stores/timeline';
@@ -449,6 +572,22 @@ const handleBoneLength = (e: Event) => {
   }
 };
 
+const physicsStore = usePhysicsStore();
+
+const handlePhysicsToggle = (e: Event) => {
+  const target = e.target as HTMLInputElement;
+  if (bonesStore.activeBoneId) {
+    physicsStore.setPhysicsEnabled(bonesStore.activeBoneId, target.checked);
+  }
+};
+
+const handlePhysicsParamChange = (key: any, e: Event) => {
+  const target = e.target as HTMLInputElement;
+  if (bonesStore.activeBoneId) {
+    physicsStore.updatePhysicsParam(bonesStore.activeBoneId, key, parseFloat(target.value));
+  }
+};
+
 const handleBindBone = (e: Event) => {
   const target = e.target as HTMLSelectElement;
   if (activePart.value && target.value) {
@@ -472,6 +611,144 @@ const handleDepthImport = async (event: Event) => {
     target.value = '';
   }
 };
+
+import { mat3 } from 'gl-matrix';
+
+function getBoneWorldMatrix(boneId: string): mat3 {
+  const bones = bonesStore.bones;
+  const bone = bones.find(b => b.id === boneId);
+  if (!bone) return mat3.create();
+
+  const boneMat = mat3.create();
+  mat3.translate(boneMat, boneMat, bone.position);
+  mat3.rotate(boneMat, boneMat, bone.rotation);
+
+  if (bone.parentId) {
+    const parentMat = getBoneWorldMatrix(bone.parentId);
+    mat3.multiply(boneMat, parentMat, boneMat);
+  }
+  return boneMat;
+}
+
+function getPartWorldMatrix(partId: string): mat3 {
+  const project = projectStore.project;
+  if (!project) return mat3.create();
+
+  const part = project.rig.parts.find(p => p.id === partId);
+  if (!part) return mat3.create();
+
+  const localMat = mat3.create();
+
+  if (part.boneId) {
+    const boneMat = getBoneWorldMatrix(part.boneId);
+    mat3.multiply(localMat, localMat, boneMat);
+  }
+
+  if (part.transform) {
+    mat3.translate(localMat, localMat, part.transform.position);
+    mat3.rotate(localMat, localMat, part.transform.rotation);
+    mat3.scale(localMat, localMat, part.transform.scale);
+  }
+
+  if (part.parentId) {
+    const parentWorldMat = getPartWorldMatrix(part.parentId);
+    mat3.multiply(localMat, parentWorldMat, localMat);
+  }
+
+  return localMat;
+}
+
+const handleInitGridMesh = (rows: number, cols: number) => {
+  if (!activePart.value) return;
+  const part = activePart.value;
+
+  const vertices: number[] = [];
+  const uvs: number[] = [];
+  const triangles: number[] = [];
+  const skinWeights: any[] = [];
+
+  for (let r = 0; r <= rows; r++) {
+    const y = -0.5 + r / rows;
+    const v = 1.0 - r / rows;
+    for (let c = 0; c <= cols; c++) {
+      const x = -0.5 + c / cols;
+      const u = c / cols;
+      vertices.push(x, y);
+      uvs.push(u, v);
+      skinWeights.push({ boneIds: [], weights: [] });
+    }
+  }
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const i0 = r * (cols + 1) + c;
+      const i1 = i0 + 1;
+      const i2 = i0 + (cols + 1);
+      const i3 = i2 + 1;
+      triangles.push(i0, i1, i2);
+      triangles.push(i2, i1, i3);
+    }
+  }
+
+  part.vertices = vertices;
+  part.uvs = uvs;
+  part.triangles = triangles;
+  part.skinWeights = skinWeights;
+  projectStore.markDirty();
+};
+
+const handleClearMesh = () => {
+  if (activePart.value) {
+    const part = activePart.value;
+    delete part.vertices;
+    delete part.uvs;
+    delete part.triangles;
+    delete part.skinWeights;
+    delete part.bindMatrices;
+    projectStore.markDirty();
+  }
+};
+
+const handleFreezeBindPose = () => {
+  if (!projectStore.project || !activePart.value) return;
+  const part = activePart.value;
+  if (!part.vertices) return;
+
+  const uniqueBoneIds = new Set<string>();
+  if (part.skinWeights) {
+    for (const sw of part.skinWeights) {
+      if (sw && sw.boneIds) {
+        for (const bId of sw.boneIds) {
+          uniqueBoneIds.add(bId);
+        }
+      }
+    }
+  }
+  if (part.boneId) {
+    uniqueBoneIds.add(part.boneId);
+  }
+
+  const partWorldMat = getPartWorldMatrix(part.id);
+  const partWorldMatInv = mat3.create();
+  mat3.invert(partWorldMatInv, partWorldMat);
+
+  const bindMatrices: Record<string, number[]> = {};
+
+  for (const boneId of uniqueBoneIds) {
+    const boneWorldMat = getBoneWorldMatrix(boneId);
+    const boneWorldMatInv = mat3.create();
+    mat3.invert(boneWorldMatInv, boneWorldMat);
+    
+    const bindMat = mat3.create();
+    mat3.multiply(bindMat, boneWorldMatInv, partWorldMat);
+    
+    bindMatrices[boneId] = Array.from(bindMat);
+  }
+
+  part.bindMatrices = bindMatrices;
+  projectStore.markDirty();
+  alert('バインドポーズを現在のポーズで固定しました。');
+};
 </script>
 
 <style scoped lang="scss">
@@ -482,6 +759,40 @@ const handleDepthImport = async (event: Event) => {
   display: flex;
   flex-direction: column;
   height: 100%;
+  transition: width 0.25s ease;
+
+  // Preview モード用コンパクト表示
+  &.mini {
+    width: 220px;
+    height: 100%;
+
+    .mini-header {
+      height: 40px;
+      display: flex;
+      align-items: center;
+      padding: 0 14px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .param-group {
+      margin-bottom: 10px;
+    }
+
+    .param-item {
+      .label {
+        width: 56px;
+        font-size: 10px;
+      }
+      .value {
+        width: 28px;
+        font-size: 10px;
+      }
+    }
+  }
 
   .panel-header {
     height: 40px;
@@ -789,6 +1100,72 @@ const handleDepthImport = async (event: Event) => {
         }
       }
     }
+
+    .mesh-summary, .empty-mesh-desc {
+      padding: 8px 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      font-size: 11px;
+      color: var(--text-secondary);
+
+      .prop-text-row {
+        display: flex;
+        justify-content: space-between;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 4px;
+        
+        .label {
+          color: var(--text-muted);
+        }
+        .val {
+          color: var(--text-primary);
+          font-weight: 500;
+        }
+      }
+
+      .desc-text {
+        color: var(--text-muted);
+        font-size: 11px;
+        text-align: center;
+        padding: 4px 0;
+      }
+
+      .btn-grid-row {
+        display: flex;
+        gap: 6px;
+        margin-top: 4px;
+
+        .opt-btn {
+          flex: 1;
+          font-size: 11px;
+          padding: 6px 0;
+          border-radius: 4px;
+          background: rgba(138, 79, 255, 0.15);
+          border: 1px solid rgba(138, 79, 255, 0.3);
+          color: var(--text-primary);
+          cursor: pointer;
+          transition: all 0.15s ease;
+          text-align: center;
+
+          &:hover {
+            background: rgba(138, 79, 255, 0.35);
+            border-color: var(--brand-purple);
+          }
+
+          &.danger {
+            background: rgba(255, 77, 79, 0.1);
+            border-color: rgba(255, 77, 79, 0.25);
+            color: #ff4d4f;
+
+            &:hover {
+              background: rgba(255, 77, 79, 0.25);
+              border-color: #ff4d4f;
+            }
+          }
+        }
+      }
+    }
   }
 
   .panel-footer {
@@ -939,6 +1316,53 @@ const handleDepthImport = async (event: Event) => {
         cursor: pointer;
 
         &:hover { border-color: var(--text-muted); color: var(--text-primary); }
+      }
+    }
+  }
+
+  // トグルスイッチスタイル
+  .toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 28px;
+    height: 16px;
+
+    input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: var(--bg-active);
+      transition: .2s;
+      border-radius: 16px;
+
+      &:before {
+        position: absolute;
+        content: "";
+        height: 12px;
+        width: 12px;
+        left: 2px;
+        bottom: 2px;
+        background-color: var(--text-muted);
+        transition: .2s;
+        border-radius: 50%;
+      }
+    }
+
+    input:checked + .toggle-slider {
+      background-color: var(--brand-cyan);
+
+      &:before {
+        transform: translateX(12px);
+        background-color: var(--bg-panel);
       }
     }
   }

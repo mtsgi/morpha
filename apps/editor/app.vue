@@ -1,31 +1,40 @@
 <template>
-  <div class="app-layout">
+  <div class="app-layout" :data-mode="editorStore.currentMode">
     <AppHeader />
-    
+
     <div class="main-workspace">
-      <PrimaryNav :active-nav="activeNav" @update:active-nav="activeNav = $event" />
-      
-      <!-- サイドバー: ナビゲーション選択に応じて切り替え -->
-      <PartsPanel v-if="activeNav === 'parts'" />
-      <BonesPanel v-else-if="activeNav === 'deformer'" />
-      
+      <!-- Edit / Animate モード: 左ナビ + サイドバー -->
+      <template v-if="editorStore.currentMode !== 'preview'">
+        <PrimaryNav :active-nav="activeNav" @update:active-nav="activeNav = $event" />
+
+        <!-- サイドバー: ナビゲーション選択に応じて切り替え -->
+        <PartsPanel v-if="activeNav === 'parts'" />
+        <BonesPanel v-else-if="activeNav === 'deformer'" />
+      </template>
+
+      <!-- センターカラム: Canvas + タイムライン -->
       <div class="center-column">
         <CanvasView />
-        <TimelinePanel />
+        <!-- Preview モードではタイムライン非表示 -->
+        <TimelinePanel v-if="editorStore.currentMode !== 'preview'" />
       </div>
 
-      <div class="right-column">
-        <ParametersPanel />
-        <PreviewPanel />
+      <!-- 右カラム -->
+      <div class="right-column" :class="{ 'preview-mode': editorStore.currentMode === 'preview' }">
+        <!-- Preview モードはミニパラメータスライダーのみ -->
+        <ParametersPanel :mini="editorStore.currentMode === 'preview'" />
+        <!-- Preview モードでは PreviewPanel を非表示 -->
+        <PreviewPanel v-if="editorStore.currentMode !== 'preview'" />
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
 import { useProjectStore } from './stores/project';
 import { useHistoryStore } from './stores/history';
+import { useEditorStore } from './stores/editor';
 
 import AppHeader from './components/layout/AppHeader.vue';
 import PrimaryNav from './components/layout/PrimaryNav.vue';
@@ -38,8 +47,18 @@ import PreviewPanel from './components/panels/PreviewPanel.vue';
 
 const projectStore = useProjectStore();
 const historyStore = useHistoryStore();
+const editorStore = useEditorStore();
 
 const activeNav = ref<string>('parts');
+
+// パラメータ変更時に連動するボーンの座標や回転を同期する
+watch(
+  () => projectStore.currentParameters,
+  () => {
+    projectStore.syncLinkedParameters();
+  },
+  { deep: true, immediate: true }
+);
 
 onMounted(() => {
   projectStore.initMockProject();
@@ -82,12 +101,13 @@ onUnmounted(() => {
     flex: 1;
     display: flex;
     overflow: hidden;
+    transition: all 0.25s ease;
 
     .center-column {
       flex: 1;
       display: flex;
       flex-direction: column;
-      min-width: 0; // Prevent flex item from overflowing
+      min-width: 0;
     }
 
     .right-column {
@@ -95,6 +115,30 @@ onUnmounted(() => {
       flex-direction: column;
       width: 320px;
       flex-shrink: 0;
+      transition: width 0.25s ease;
+
+      // Preview モードではミニ幅に縮小
+      &.preview-mode {
+        width: 220px;
+      }
+    }
+  }
+
+  // Preview モード: Canvasに集中
+  &[data-mode="preview"] {
+    .main-workspace {
+      .center-column {
+        flex: 1;
+      }
+    }
+  }
+
+  // Animate モード: タイムライン強調
+  &[data-mode="animate"] {
+    .main-workspace {
+      .center-column {
+        // タイムラインエリアを少し広く
+      }
     }
   }
 }

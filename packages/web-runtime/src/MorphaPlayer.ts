@@ -106,6 +106,7 @@ export class MorphaPlayer {
         parts: format.parts,
         bones: format.bones,
       },
+      parameters: format.parameters,
       assets: format.assets.map(a => ({
         id: a.id,
         type: a.type,
@@ -274,6 +275,9 @@ export class MorphaPlayer {
 
     // パラメータを Renderer に送信
     this.renderer.updateParameters(this.parameters);
+
+    // 物理演算の更新
+    this.renderer.updatePhysics(dt);
   }
 
   private _draw(): void {

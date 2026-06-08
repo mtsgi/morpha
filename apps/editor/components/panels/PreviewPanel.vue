@@ -2,272 +2,414 @@
   <div class="preview-panel">
     <div class="panel-header">
       <div class="tabs">
-        <div class="tab active">デフォーマ</div>
-        <div class="tab">ツール詳細</div>
-        <div class="tab">プレビュー</div>
+        <div class="tab" :class="{ active: activeTab === 'deformer' }" @click="activeTab = 'deformer'">デフォーマ</div>
+        <div class="tab" :class="{ active: activeTab === 'inspector' }" @click="activeTab = 'inspector'">インスペクタ</div>
       </div>
     </div>
 
-    <div class="preview-content">
-      <div class="deformer-tree">
-        <div class="tree-item expanded">
-          <ChevronDownIcon class="icon expand" :size="14" />
-          <span>Face Deformer</span>
-        </div>
-        <div class="tree-item expanded active level-1">
-          <ChevronDownIcon class="icon expand" :size="14" />
-          <span>Eye Deformer</span>
-        </div>
-        <div class="tree-item level-2">
-          <div class="dot"></div>
-          <span>Eyeball</span>
-        </div>
-        <div class="tree-item level-2">
-          <div class="dot"></div>
-          <span>Upper Lid</span>
-        </div>
-        <div class="tree-item level-2">
-          <div class="dot"></div>
-          <span>Lower Lid</span>
-        </div>
-        <div class="tree-item level-2">
-          <div class="dot"></div>
-          <span>Smile</span>
-        </div>
-        <div class="tree-item level-1">
-          <ChevronRightIcon class="icon expand" :size="14" />
-          <span>Brow Deformer</span>
-        </div>
-        <div class="tree-item level-1">
-          <ChevronRightIcon class="icon expand" :size="14" />
-          <span>Mouth Deformer</span>
-        </div>
-        
-        <div class="tree-item expanded mt-2">
-          <ChevronDownIcon class="icon expand" :size="14" />
-          <span>Hair Deformer</span>
-        </div>
-        <div class="tree-item level-1">
-          <ChevronRightIcon class="icon expand" :size="14" />
-          <span>Front Hair</span>
-        </div>
-        
-        <div class="tree-item mt-2">
-          <ChevronRightIcon class="icon expand" :size="14" />
-          <span>Body Deformer</span>
-        </div>
+    <!-- デフォーマ (ボーン) ツリー -->
+    <div v-if="activeTab === 'deformer'" class="deformer-content">
+      <div v-if="bonesStore.bones.length === 0" class="empty-state">
+        <BoneIcon :size="24" class="empty-icon" />
+        <span>ボーンがありません</span>
       </div>
 
-      <div class="mesh-preview">
-        <div class="preview-tools">
-          <MousePointer2Icon class="icon active" :size="14" />
-          <div class="divider"></div>
-          <GridIcon class="icon" :size="14" />
-          <MaximizeIcon class="icon" :size="14" />
-          <NetworkIcon class="icon" :size="14" />
-          <div class="divider"></div>
-          <SettingsIcon class="icon" :size="14" />
+      <div v-else class="deformer-tree">
+        <DeformerTreeNode
+          v-for="bone in bonesStore.bonesTree"
+          :key="bone.id"
+          :bone="bone"
+          :level="0"
+          :active-id="bonesStore.activeBoneId"
+          @select="bonesStore.activeBoneId = $event"
+        />
+      </div>
+
+      <!-- 統計エリア -->
+      <div class="stats-bar" v-if="projectStore.project">
+        <div class="stat">
+          <BoneIcon :size="11" />
+          <span>{{ bonesStore.bones.length }} ボーン</span>
         </div>
-        <div class="preview-canvas">
-          <!-- Mock Eye Mesh -->
-          <div class="mock-eye-mesh">
-            <div class="mesh-lines"></div>
-            <div class="mesh-dots"></div>
-          </div>
-          <div class="mesh-stats">
-            <span>頂点数: 128</span>
-            <span>三角形: 200</span>
-            <span>描画: ON <ChevronDownIcon :size="10" style="display:inline" /></span>
-          </div>
+        <div class="stat">
+          <LayersIcon :size="11" />
+          <span>{{ meshParts.length }} メッシュ</span>
+        </div>
+        <div class="stat">
+          <SlidersIcon :size="11" />
+          <span>{{ projectStore.project.parameters?.length ?? 0 }} パラメータ</span>
         </div>
       </div>
+    </div>
+
+    <!-- インスペクタ -->
+    <div v-if="activeTab === 'inspector'" class="inspector-content">
+      <div v-if="!bonesStore.activeBone && !projectStore.activePartId" class="empty-state">
+        <MousePointerIcon :size="24" class="empty-icon" />
+        <span>パーツまたはボーンを選択</span>
+      </div>
+
+      <!-- 選択中ボーンの詳細 -->
+      <template v-if="bonesStore.activeBone">
+        <div class="inspector-section">
+          <div class="section-title">
+            <BoneIcon :size="12" class="section-icon cyan" />
+            ボーン — {{ bonesStore.activeBone.name }}
+          </div>
+
+          <div class="prop-row">
+            <span class="prop-label">位置</span>
+            <span class="prop-value">
+              X: {{ bonesStore.activeBone.position[0].toFixed(3) }}
+              Y: {{ bonesStore.activeBone.position[1].toFixed(3) }}
+            </span>
+          </div>
+          <div class="prop-row">
+            <span class="prop-label">回転</span>
+            <span class="prop-value">{{ (bonesStore.activeBone.rotation * 180 / Math.PI).toFixed(1) }}°</span>
+          </div>
+          <div class="prop-row">
+            <span class="prop-label">長さ</span>
+            <span class="prop-value">{{ bonesStore.activeBone.length.toFixed(3) }}</span>
+          </div>
+          <div class="prop-row">
+            <span class="prop-label">親</span>
+            <span class="prop-value">{{ getParentBoneName(bonesStore.activeBone.parentId) }}</span>
+          </div>
+          <div class="prop-row">
+            <span class="prop-label">子</span>
+            <span class="prop-value">{{ getChildCount(bonesStore.activeBone.id) }} 件</span>
+          </div>
+        </div>
+
+        <!-- バインドされたパーツ -->
+        <div class="inspector-section">
+          <div class="section-title">
+            <LayersIcon :size="12" class="section-icon" />
+            バインドパーツ
+          </div>
+          <div v-if="boundParts.length === 0" class="empty-bind">未バインド</div>
+          <div v-for="part in boundParts" :key="part.id" class="bind-chip">
+            <ImageIcon :size="11" />
+            {{ part.name }}
+          </div>
+        </div>
+
+        <!-- リンク済みパラメータ -->
+        <div class="inspector-section">
+          <div class="section-title">
+            <SlidersIcon :size="12" class="section-icon" />
+            リンクパラメータ
+          </div>
+          <div v-if="linkedParams.length === 0" class="empty-bind">なし</div>
+          <div v-for="param in linkedParams" :key="param.id" class="bind-chip cyan">
+            <LinkIcon :size="11" />
+            {{ param.name }} ({{ param.linkedProperty }})
+          </div>
+        </div>
+      </template>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { 
+import { ref, computed, defineComponent, h } from 'vue';
+import {
+  Bone as BoneIcon,
+  Layers as LayersIcon,
+  Sliders as SlidersIcon,
+  MousePointer as MousePointerIcon,
+  Image as ImageIcon,
+  Link as LinkIcon,
   ChevronDown as ChevronDownIcon,
   ChevronRight as ChevronRightIcon,
-  MousePointer2 as MousePointer2Icon,
-  Grid as GridIcon,
-  Maximize as MaximizeIcon,
-  Network as NetworkIcon,
-  Settings as SettingsIcon
 } from 'lucide-vue-next';
+import { useBonesStore } from '../../stores/bones';
+import { useProjectStore } from '../../stores/project';
+import type { Bone } from '@morpha/core';
+
+const bonesStore = useBonesStore();
+const projectStore = useProjectStore();
+
+const activeTab = ref<'deformer' | 'inspector'>('deformer');
+
+// メッシュパーツ一覧
+const meshParts = computed(() =>
+  projectStore.project?.rig.parts.filter(p => p.type === 'mesh') ?? []
+);
+
+// 選択中ボーンにバインドされたパーツ
+const boundParts = computed(() => {
+  if (!bonesStore.activeBoneId || !projectStore.project) return [];
+  return projectStore.project.rig.parts.filter(p => p.boneId === bonesStore.activeBoneId);
+});
+
+// 選択中ボーンにリンクされたパラメータ
+const linkedParams = computed(() => {
+  if (!bonesStore.activeBoneId || !projectStore.project) return [];
+  return (projectStore.project.parameters ?? []).filter(
+    p => p.linkedBoneId === bonesStore.activeBoneId
+  );
+});
+
+const getParentBoneName = (parentId: string | null): string => {
+  if (!parentId) return 'ルート';
+  const bone = bonesStore.bones.find(b => b.id === parentId);
+  return bone?.name ?? parentId;
+};
+
+const getChildCount = (boneId: string): number => {
+  return bonesStore.bones.filter(b => b.parentId === boneId).length;
+};
+
+// --- DeformerTreeNode (インラインコンポーネント) ---
+const DeformerTreeNode = defineComponent({
+  name: 'DeformerTreeNode',
+  props: {
+    bone: { type: Object as () => Bone & { children?: any[] }, required: true },
+    level: { type: Number, default: 0 },
+    activeId: { type: String as () => string | null, default: null },
+  },
+  emits: ['select'],
+  setup(props, { emit }) {
+    const expanded = ref(true);
+    const hasChildren = computed(() => (props.bone.children?.length ?? 0) > 0);
+    const isActive = computed(() => props.bone.id === props.activeId);
+
+    return () => {
+      const children = props.bone.children ?? [];
+      return h('div', { class: 'tree-node' }, [
+        h('div', {
+          class: ['tree-item', { active: isActive.value }],
+          style: { paddingLeft: `${props.level * 14 + 8}px` },
+          onClick: () => emit('select', props.bone.id),
+        }, [
+          hasChildren.value
+            ? h('button', {
+                class: 'expand-btn',
+                onClick: (e: Event) => { e.stopPropagation(); expanded.value = !expanded.value; }
+              }, [
+                h(expanded.value ? ChevronDownIcon : ChevronRightIcon, { size: 12 })
+              ])
+            : h('span', { class: 'leaf-dot' }),
+          h(BoneIcon, { size: 12, class: 'bone-icon' }),
+          h('span', { class: 'bone-name' }, props.bone.name),
+        ]),
+        expanded.value && children.length > 0
+          ? h('div', { class: 'tree-children' },
+              children.map((child: any) =>
+                h(DeformerTreeNode, {
+                  key: child.id,
+                  bone: child,
+                  level: props.level + 1,
+                  activeId: props.activeId,
+                  onSelect: (id: string) => emit('select', id),
+                })
+              )
+            )
+          : null,
+      ]);
+    };
+  },
+});
 </script>
 
 <style scoped lang="scss">
 .preview-panel {
-  height: 260px;
+  flex: 1;
   background-color: var(--bg-panel);
-  border-top: 1px solid var(--border-color);
   border-left: 1px solid var(--border-color);
+  border-top: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 
   .panel-header {
-    height: 32px;
-    background-color: var(--bg-panel-light);
+    height: 40px;
     border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
 
     .tabs {
       display: flex;
       height: 100%;
-      
+
       .tab {
-        padding: 0 16px;
+        flex: 1;
         display: flex;
         align-items: center;
+        justify-content: center;
         color: var(--text-secondary);
-        font-size: 11px;
+        font-size: 12px;
+        font-weight: 500;
         cursor: pointer;
+        border-bottom: 2px solid transparent;
+        transition: all 0.15s;
 
+        &:hover { color: var(--text-primary); }
         &.active {
-          background-color: var(--bg-panel);
-          color: var(--brand-cyan);
-          border-top: 2px solid var(--brand-cyan);
+          color: var(--brand-purple);
+          border-bottom-color: var(--brand-purple);
         }
       }
     }
   }
 
-  .preview-content {
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 16px;
+    gap: 8px;
+    color: var(--text-muted);
+    flex: 1;
+
+    .empty-icon { opacity: 0.3; }
+    span { font-size: 11px; }
+  }
+
+  // --- デフォーマツリー ---
+  .deformer-content {
     flex: 1;
     display: flex;
+    flex-direction: column;
     overflow: hidden;
+  }
 
-    .deformer-tree {
-      width: 160px;
-      border-right: 1px solid var(--border-color);
-      padding: 8px;
-      overflow-y: auto;
+  .deformer-tree {
+    flex: 1;
+    overflow-y: auto;
+    padding: 6px 0;
+  }
 
-      .tree-item {
-        display: flex;
-        align-items: center;
-        padding: 4px;
-        color: var(--text-secondary);
-        font-size: 11px;
-        border-radius: 4px;
-        cursor: pointer;
-
-        &:hover { background-color: var(--bg-hover); color: var(--text-primary); }
-        
-        &.active {
-          background-color: rgba(138, 79, 255, 0.15);
-          color: var(--brand-purple-hover);
-        }
-
-        .expand {
-          margin-right: 4px;
-          opacity: 0.6;
-        }
-
-        .dot {
-          width: 4px;
-          height: 4px;
-          background-color: var(--text-muted);
-          border-radius: 50%;
-          margin: 0 8px 0 4px;
-        }
-
-        &.level-1 { padding-left: 16px; }
-        &.level-2 { padding-left: 28px; }
-        &.mt-2 { margin-top: 8px; }
-      }
-    }
-
-    .mesh-preview {
-      flex: 1;
+  :deep(.tree-node) {
+    .tree-item {
       display: flex;
-      flex-direction: row;
+      align-items: center;
+      gap: 5px;
+      height: 28px;
+      cursor: pointer;
+      border-radius: 3px;
+      margin: 1px 6px;
+      transition: background-color 0.1s;
+      color: var(--text-secondary);
+      font-size: 12px;
 
-      .preview-tools {
-        width: 32px;
-        border-right: 1px solid var(--border-color);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding: 8px 0;
-        gap: 12px;
-        background-color: var(--bg-base);
-
-        .divider {
-          width: 16px;
-          height: 1px;
-          background-color: var(--border-color);
-        }
-
-        .icon {
-          color: var(--text-secondary);
-          cursor: pointer;
-          &:hover { color: var(--text-primary); }
-          &.active { color: var(--brand-cyan); }
-        }
+      &:hover { background-color: var(--bg-hover); color: var(--text-primary); }
+      &.active {
+        background-color: rgba(138, 79, 255, 0.15);
+        color: var(--brand-purple);
       }
 
-      .preview-canvas {
-        flex: 1;
-        background-color: #1a1a24;
-        position: relative;
+      .expand-btn {
+        width: 16px;
+        height: 16px;
         display: flex;
         align-items: center;
         justify-content: center;
+        color: var(--text-muted);
+        flex-shrink: 0;
+        border-radius: 2px;
+        &:hover { color: var(--text-primary); }
+      }
 
-        .mock-eye-mesh {
-          width: 120px;
-          height: 80px;
-          border: 1px dashed rgba(0, 210, 255, 0.3);
+      .leaf-dot {
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        &::after {
+          content: '';
+          display: block;
+          width: 4px;
+          height: 4px;
           border-radius: 50%;
-          position: relative;
-          background: radial-gradient(circle at center, rgba(138, 79, 255, 0.1), transparent);
-
-          &::before {
-            content: '';
-            position: absolute;
-            inset: 10px;
-            border: 1px solid var(--brand-purple);
-            border-radius: 50%;
-          }
-
-          &::after {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 40px;
-            height: 40px;
-            background: rgba(0, 210, 255, 0.2);
-            border: 1px solid var(--brand-cyan);
-            border-radius: 50%;
-            transform: translate(-50%, -50%);
-          }
-        }
-
-        .mesh-stats {
-          position: absolute;
-          bottom: 0;
-          left: 0;
-          right: 0;
-          height: 24px;
-          background-color: rgba(24, 24, 31, 0.8);
-          border-top: 1px solid var(--border-color);
-          display: flex;
-          align-items: center;
-          padding: 0 12px;
-          gap: 16px;
-          font-size: 10px;
-          color: var(--text-muted);
-
-          span:last-child {
-            margin-left: auto;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-          }
+          background-color: var(--text-muted);
+          opacity: 0.4;
         }
       }
+
+      .bone-icon { color: var(--brand-cyan); flex-shrink: 0; }
+      .bone-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    }
+  }
+
+  .stats-bar {
+    display: flex;
+    gap: 12px;
+    padding: 8px 12px;
+    border-top: 1px solid var(--border-color);
+    flex-shrink: 0;
+
+    .stat {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+  }
+
+  // --- インスペクタ ---
+  .inspector-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+  }
+
+  .inspector-section {
+    margin-bottom: 14px;
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin-bottom: 6px;
+      padding: 0 4px;
+
+      .section-icon { color: var(--text-muted); &.cyan { color: var(--brand-cyan); } }
+    }
+
+    .prop-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 4px 4px;
+      font-size: 11px;
+      border-bottom: 1px solid var(--border-color);
+
+      .prop-label { color: var(--text-muted); }
+      .prop-value { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+
+      &:last-child { border-bottom: none; }
+    }
+
+    .empty-bind {
+      font-size: 11px;
+      color: var(--text-muted);
+      padding: 4px 4px;
+    }
+
+    .bind-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+      color: var(--text-secondary);
+      background-color: var(--bg-active);
+      border-radius: 4px;
+      padding: 2px 6px;
+      margin: 2px;
+
+      &.cyan { color: var(--brand-cyan); background-color: rgba(0, 210, 200, 0.1); }
     }
   }
 }

@@ -141,6 +141,15 @@ export const useBonesStore = defineStore('bones', {
 
       projectStore.markDirty();
 
+      // 削除するボーンにリンクされたパラメータを記録して削除
+      const linkedParams = (projectStore.project.parameters ?? []).filter(
+        p => p.linkedBoneId === boneId
+      );
+      const removedParamIds = linkedParams.map(p => p.id);
+      for (const paramId of removedParamIds) {
+        projectStore.removeParameter(paramId);
+      }
+
       historyStore.record({
         description: `ボーン「${bone.name}」を削除`,
         undo: () => {
@@ -156,6 +165,10 @@ export const useBonesStore = defineStore('bones', {
           for (const partId of boundPartIds) {
             const part = projectStore.project.rig.parts.find(p => p.id === partId);
             if (part) part.boneId = boneId;
+          }
+          // 削除したパラメータを復元
+          for (const param of linkedParams) {
+            projectStore.addParameter({ ...param });
           }
           this.activeBoneId = boneId;
         },
@@ -202,7 +215,17 @@ export const useBonesStore = defineStore('bones', {
       }
 
       // 変更を適用
-      if (updates.name !== undefined) bone.name = updates.name;
+      if (updates.name !== undefined) {
+        const oldName = bone.name;
+        bone.name = updates.name;
+        // ボーン名変更時に対応するパラメータ名も更新
+        for (const param of (projectStore.project.parameters ?? [])) {
+          if (param.linkedBoneId === boneId) {
+            // 名前のoldName部分を新名前に置換
+            param.name = param.name.replace(oldName, updates.name);
+          }
+        }
+      }
       if (updates.position !== undefined) {
         bone.position[0] = updates.position[0];
         bone.position[1] = updates.position[1];

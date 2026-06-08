@@ -10,25 +10,27 @@
 
     <div class="header-center">
       <div class="mode-switcher">
-        <button :class="{ active: currentMode === 'edit' }" @click="setMode('edit')">Edit</button>
-        <button :class="{ active: currentMode === 'animate' }" @click="setMode('animate')">Animate</button>
-        <button :class="{ active: currentMode === 'preview' }" @click="setMode('preview')">Preview</button>
+        <button :class="{ active: editorStore.currentMode === 'edit' }" @click="editorStore.setMode('edit')">Edit</button>
+        <button :class="{ active: editorStore.currentMode === 'animate' }" @click="editorStore.setMode('animate')">Animate</button>
+        <button :class="{ active: editorStore.currentMode === 'preview' }" @click="editorStore.setMode('preview')">Preview</button>
       </div>
     </div>
 
     <div class="header-right">
-      <button class="export-btn" @click="$emit('openExport')">
+      <button class="export-btn" @click="showExport = true">
         <DownloadIcon :size="14" />
         <span>エクスポート</span>
       </button>
       <div class="playback-controls">
-        <button><PlayIcon class="icon" :size="16" /></button>
-        <button><SkipForwardIcon class="icon" :size="16" /></button>
-        <button><FastForwardIcon class="icon" :size="16" /></button>
+        <button @click="timelineStore.stop()" title="停止"><SquareIcon class="icon" :size="16" /></button>
+        <button @click="timelineStore.isPlaying ? timelineStore.pause() : timelineStore.play()" :title="timelineStore.isPlaying ? '一時停止' : '再生'">
+          <PauseIcon v-if="timelineStore.isPlaying" class="icon playing" :size="16" />
+          <PlayIcon v-else class="icon" :size="16" />
+        </button>
+        <button @click="timelineStore.seekTo(timelineStore.duration)" title="末尾へ"><SkipForwardIcon class="icon" :size="16" /></button>
       </div>
       <div class="window-controls">
         <button><MaximizeIcon class="icon" :size="14" /></button>
-        <button><MinusIcon class="icon" :size="14" /></button>
         <div class="avatar">M</div>
       </div>
     </div>
@@ -41,26 +43,21 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { 
-  ChevronDown as ChevronDownIcon,
   Play as PlayIcon,
+  Pause as PauseIcon,
+  Square as SquareIcon,
   SkipForward as SkipForwardIcon,
-  FastForward as FastForwardIcon,
   Maximize as MaximizeIcon,
-  Minus as MinusIcon,
   Download as DownloadIcon
 } from 'lucide-vue-next';
 import FileMenu from './FileMenu.vue';
 import ExportDialog from '../panels/ExportDialog.vue';
+import { useEditorStore } from '../../stores/editor';
+import { useTimelineStore } from '../../stores/timeline';
 
-const emit = defineEmits(['modeChange', 'openExport']);
-
-const currentMode = ref<'edit' | 'animate' | 'preview'>('edit');
+const editorStore = useEditorStore();
+const timelineStore = useTimelineStore();
 const showExport = ref(false);
-
-function setMode(mode: 'edit' | 'animate' | 'preview') {
-  currentMode.value = mode;
-  emit('modeChange', mode);
-}
 </script>
 
 <style scoped lang="scss">
